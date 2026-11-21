@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Koyu temada WebView oyunun koyu renklerini (prefers-color-scheme) kullanır -->
+    <style name="Theme.MantarCiftligi" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/zemin</item>
+        <item name="android:colorBackground">@color/zemin</item>
+    </style>
+</resources>

@@ -4,9 +4,21 @@ Tarayıcıda oynanan mantar yetiştiriciliği simülasyonu. Gerçek üretim aşa
 
 ## Nasıl oynanır
 
-`index.html` dosyasını bir tarayıcıda açın. Kurulum gerekmez; oyun kaldığınız yerden devam eder (tarayıcıda saklanır).
+**Android:** GitHub'da **Releases → Mantar Çiftliği (Android)** sayfasından `MantarCiftligi.apk` dosyasını telefona indirip kurun (bilinmeyen kaynaklardan yüklemeye izin vermeniz gerekir). `main` dalına her gönderimde APK otomatik derlenir (**Actions → APK derle**).
 
-GitHub Pages ile yayınlamak için: **Settings → Pages → Branch: main / (root)**.
+**Tarayıcı:** `docs/index.html` dosyasını açın. Kurulum gerekmez; oyun kaldığınız yerden devam eder. GitHub Pages ile yayınlamak için: **Settings → Pages → Branch: main / docs**.
+
+## Proje yapısı
+
+```
+docs/index.html     Oyunun tamamı (tek dosya). Web ve Android aynı dosyayı kullanır.
+app/                Android kabuğu: oyunu tam ekran WebView'da açar (Kotlin).
+.github/workflows/  APK derleme ve "son-surum" sürümüne yükleme
+```
+
+### Sabit imza anahtarı (isteğe bağlı)
+
+Anahtar tanımlı değilse her derleme farklı bir geçici anahtarla imzalanır; yeni sürümü kurmak için eskisini kaldırmak gerekir ve oyun kaydı silinir. Bunu önlemek için repoya şu sırları ekleyin (**Settings → Secrets and variables → Actions**): `KEYSTORE_BASE64` (keystore dosyasının base64 hali), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
 ## Ürünler
 

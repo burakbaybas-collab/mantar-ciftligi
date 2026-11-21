@@ -1,0 +1,73 @@
+name: APK derle
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["README.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-derle
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # İsteğe bağlı: KEYSTORE_BASE64 sırrı tanımlıysa her derleme aynı anahtarla imzalanır,
+      # böylece yeni sürüm eskisinin üzerine (oyun kaydı silinmeden) kurulur.
+      - name: İmza anahtarını hazırla
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/ciftlik.jks"
+            {
+              echo "KEYSTORE_FILE=$RUNNER_TEMP/ciftlik.jks"
+              echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "KEY_ALIAS=$KEY_ALIAS"
+              echo "KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Sabit imza anahtarı kullanılacak."
+          else
+            echo "KEYSTORE_BASE64 yok: geçici debug anahtarıyla imzalanacak."
+          fi
+
+      - name: APK derle
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: APK'yı derleme çıktısı olarak sakla
+        uses: actions/upload-artifact@v4
+        with:
+          name: MantarCiftligi-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: APK'yı "son-surum" sürümüne yükle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk MantarCiftligi.apk
+          NOTES="Otomatik derleme ${GITHUB_RUN_NUMBER} (${GITHUB_SHA::7}). Telefondan indirip kurabilirsiniz."
+          if gh release view son-surum >/dev/null 2>&1; then
+            gh release upload son-surum MantarCiftligi.apk --clobber
+            gh release edit son-surum --notes "$NOTES" --prerelease
+          else
+            gh release create son-surum MantarCiftligi.apk --title "Mantar Çiftliği (Android)" --notes "$NOTES" --prerelease
+          fi

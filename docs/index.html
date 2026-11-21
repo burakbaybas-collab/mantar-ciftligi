@@ -161,6 +161,23 @@ button small{font-weight:500;opacity:.8;font-family:var(--font-m);font-size:11px
 .sum{font-size:12.5px;color:var(--muted);line-height:1.55}
 .sum b{font-family:var(--font-m);color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 
+/* tanıtım turu: vurgulanan bölüm + minik pencere */
+#tour{position:fixed;inset:0;z-index:30}
+#tour.dim{background:rgba(8,10,8,.6)}
+.spot{position:fixed;border-radius:8px;box-shadow:0 0 0 9999px rgba(8,10,8,.6);outline:2px solid var(--accent);pointer-events:none;transition:left .25s,top .25s,width .25s,height .25s}
+.bub{position:fixed;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px 14px;box-shadow:0 12px 32px rgba(0,0,0,.32);display:flex;flex-direction:column;gap:5px;animation:bubin .18s ease-out}
+.bub-k{font-family:var(--font-m);font-size:10.5px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em}
+.bub h3{font-size:16.5px;font-weight:800}
+.bub p{margin:0;font-size:13px;line-height:1.45}
+.bub-f{display:flex;align-items:center;gap:6px;margin-top:5px}
+.bub-f .sp{flex:1}
+.dots{display:flex;gap:4px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--accent)}
+button.lnk{background:none;border:0;color:var(--muted);padding:6px 4px;font-weight:500}
+button.lnk:hover:not(:disabled){border:0;color:var(--ink)}
+@keyframes bubin{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
 /* açılır pencere: bilgi ve çiftlik defteri */
 .sheet{position:fixed;inset:0;z-index:20;background:rgba(10,12,10,.45);display:grid;place-items:center;padding:16px}
 .sheet-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;width:min(560px,100%);max-height:85%;display:flex;flex-direction:column;overflow:hidden}
@@ -205,7 +222,7 @@ button small{font-weight:500;opacity:.8;font-family:var(--font-m);font-size:11px
 }
 @media (max-width:420px){ .brand h1{display:none} .tb .lbl{display:none} }
 @media (max-height:560px) and (min-width:900px){ .info{display:none} }
-@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
 </style>
 </head>
 <body>
@@ -229,6 +246,7 @@ button small{font-weight:500;opacity:.8;font-family:var(--font-m);font-size:11px
     <section class="panel" id="panel" aria-live="polite"></section>
   </main>
   <div class="sheet" id="sheet" hidden></div>
+  <div id="tour" hidden></div>
 </div>
 
 <script>
@@ -408,6 +426,8 @@ const ACT={
   sell(){ finishBatch(); },
   buy(id){ const u=UPG.find(x=>x.id===id); if(!u||G.up[id]||G.money<u.price) return; G.money-=u.price; G.up[id]=true; log(`Yatırım yapıldı: ${u.name}.`,'ok'); },
   rtab(k){ rapTab=k; },
+  tour(){ sheet=null; setTimeout(startTour,80); },
+  tips(){ PREF.tipsOff=!PREF.tipsOff; if(!PREF.tipsOff) PREF.tips={}; savePref(); },
   sheet(x){ sheet=x; },
   shut(){ sheet=null; confirmReset=false; },
   next(){ rapTab=0; G.batchNo++; G.day+=2; B=G.B=newBatch(G.lastSp||B.sp); log(`${G.batchNo}. parti başladı.`); },
@@ -1197,6 +1217,83 @@ function drawORapor(t){ bgBarn(); const h=B.h; const tot=h.kg.A+h.kg.B+h.kg.C||1
     txt(`${c} sınıfı · ${fmt(h.kg[c])} kg`,cx,SH-10,'#EFE6DA',11,'center'); }); }
 
 /* ---------- render ---------- */
+/* ---------- tanıtım turu ve aşama ipuçları ---------- */
+const PREF_KEY='mantarCiftligi.tercihler';
+const PREF={tour:false,tips:{},tipsOff:false};
+try{ Object.assign(PREF,JSON.parse(localStorage.getItem(PREF_KEY))||{}); }catch(e){}
+function savePref(){ try{ localStorage.setItem(PREF_KEY,JSON.stringify(PREF)); }catch(e){} }
+let TOUR=null;
+function shown(sel){ const el=document.querySelector(sel); if(!el) return false; const r=el.getBoundingClientRect(); return r.width>0&&r.height>0; }
+function tourSteps(){ const O=isO(); return [
+  {t:'Mantar Çiftliği\'ne hoş geldiniz',x:'Gerçek bir mantar işletmesini yöneteceksiniz: substratı hazırlayıp miseli ekecek, odaların iklimini ayarlayacak, hasadı toplayıp satacaksınız. Bölümleri kısaca tanıyalım.'},
+  {sel:'#steps',t:'Üretim aşamaları',x:'Soldaki menü üretimin aşamalarını sırayla gösterir. Turuncu olan şu an bulunduğunuz aşama; yeşil tikliler tamamlananlar. Aşamalar sırayla açılır.'},
+  {sel:'#stats',t:'Kasa ve gün',x:'Kasa çiftliğin parasıdır. Hammadde, enerji ve işçilik her gün kasadan düşer; hasat satılınca para girer. Gün sayacı geçen süreyi gösterir.'},
+  {sel:'.scenewrap',t:'Çiftlik görünümü',x:'Seçimlerinizin sonucunu burada canlı görürsünüz: yığından çıkan buhar, torbaları saran misel, küf lekeleri, sinekler. Hasatta mantarları buradan dokunarak toplarsınız.'},
+  {sel:'#status',t:'Son olay',x:'En son olan şey burada yazar. Kırmızı satır bir sorun var demektir. Dokununca tüm olayların kaydı açılır.'},
+  {sel:'#panel .seg',t:'Ne yetiştireceksiniz?',x:'Her partinin başında ürünü seçersiniz: talaş torbasında istiridye mantarı ya da kompostta beyaz şapkalı mantar. Aşamalar ürüne göre değişir.'},
+  {sel:'#panel .ctls',t:'Kontroller',x:'Kaydırıcılarla miktarları ve oda koşullarını (sıcaklık, nem, taze hava, ışık) ayarlarsınız. Değer hemen yanında yazar.'},
+  {sel:'#panel .gauges',t:'Göstergeler',x:'Çubuktaki yeşil bant hedef aralıktır. Kartın sol kenarı yeşilse değer hedefte, sarıysa yakın, kırmızıysa uzaktır.'},
+  {sel:'#panel button.pri',t:'İşlem düğmesi',x:'Hazır olunca turuncu düğmeyle sonraki adıma geçersiniz. Günlük aşamalarda bu düğme zamanı ilerletir; her gün gider demektir.'},
+  {sel:'[data-act="sheet:info"]',t:'Bilgi',x:'Her aşamanın gerçek üretimde nasıl yapıldığını buradan okuyun. Bu tanıtımı da buradan yeniden açabilirsiniz.'},
+  {sel:'[data-act="sheet:log"]',t:'Çiftlik defteri',x:'Tüm olayların kaydı, kasa özeti ve yeni oyun başlatma burada.'},
+  {t:'Hazırsınız',x:O?'İlk iş: talaş, kepek, kireç ve suyu ayarlayıp substratı hazırlayın. Her aşamaya ilk geldiğinizde kısa bir ipucu göreceksiniz.':'İlk iş: kompost karışımını hazırlayın. Her aşamaya ilk geldiğinizde kısa bir ipucu göreceksiniz.'},
+].filter(st=>!st.sel||shown(st.sel)); }
+const TIPS={
+  karisim:'Göstergeleri yeşil banda getirin: azot %1,5–1,9, C/N 20–28, nem %70–77, jips %3–6. Sonra yığını kurun.',
+  faz1:'Yığını 2–3 günde bir aktarın ki içi oksijensiz kalmasın. Olgunlaşma %80\'i geçince tünele taşıyabilirsiniz; %100 en iyisi.',
+  faz2:'Önce 58–60 °C\'de 8 saat pastörize edin. Sonra 45–48 °C\'de taze havayla amonyağı 10 ppm\'in altına indirin.',
+  ekim:'Misel hattını ve oranını seçin (%0,5–1). Hijyen önlemleri ilerideki küf ve sinek riskini azaltır.',
+  kulucka:'Kompostu 24–27 °C\'de tutun. Misel ısındıkça oda sıcaklığını düşürün. Küf lekesi ya da sinek çıkarsa hemen müdahale edin.',
+  ortu:'Örtü toprağını seçin ve ayarlayın: pH 7,2–7,9, kalınlık 4–5 cm, nem ideal.',
+  caserun:'Misel örtüye yürürken sıcaklığı ve nemi koruyun. Yarı yolda örtüyü karıştırmak iğne başlarını düzenler.',
+  sok:'Mantar oluşumu için odayı 16–18 °C\'ye soğutun, taze havayı açıp CO₂\'yi 1000 ppm\'in altına indirin.',
+  hasat:'Flaşı başlatın ve mantarlara dokunarak toplayın. Açılmadan toplananlar A sınıfıdır; bekleyen mantar değer kaybeder.',
+  rapor:'Sonuçları sekmelerden inceleyin. Kazancınızla çiftliğe yatırım yapıp yeni partiye başlayın.',
+  o_karisim:'Göstergeleri yeşil banda getirin: nem %60–66, kepek %15–22, pH 6,5–7,5. Sonra karıştırıp torbalayın.',
+  o_steril:'Yöntemi seçin ve torba merkezini izleyin: otoklavda 118 °C\'nin üstünde 90 dakika, buharda 65 °C\'nin üstünde 8 saat.',
+  o_ekim:'Torbaların 30 °C\'nin altına soğumasını bekleyin. Sonra türü ve misel oranını (%3–5) seçip aşılayın.',
+  o_kulucka:'Torba içini 22–27 °C\'de ve odayı karanlık tutun. Yeşil küflü torbaları gördüğünüz an ayıklayın.',
+  o_meyve:'Önce torbaları açın. Sonra günde 8–12 saat ışık, bol taze hava (CO₂ < 1000 ppm) ve türe uygun sıcaklık sağlayın.',
+};
+function startTour(){ if(TOUR) return; sheet=null; render(); TOUR={kind:'tour',i:0,steps:tourSteps()}; drawTour(); }
+function maybeTip(){ if(TOUR||sheet||PREF.tipsOff||!PREF.tour||PREF.tips[B.stage]||!TIPS[B.stage]) return;
+  const STP=isO()?STEPS_O:STEPS, stp=STP.find(x=>x.st.includes(B.stage));
+  TOUR={kind:'tip',i:0,stage:B.stage,steps:[{sel:B.stage==='hasat'?'.scenewrap':'#panel h2',t:stp?stp.name:'Bu aşama',x:TIPS[B.stage]}]}; drawTour(); }
+function endTour(){ if(!TOUR) return; const k=TOUR.kind;
+  if(k==='tour') PREF.tour=true; else PREF.tips[TOUR.stage]=true;
+  savePref(); TOUR=null; const ov=$('#tour'); ov.hidden=true; ov.innerHTML='';
+  if(k==='tour') setTimeout(maybeTip,250); }
+function drawTour(){ const T=TOUR, st=T.steps[T.i], ov=$('#tour'), last=T.i===T.steps.length-1; ov.hidden=false;
+  ov.innerHTML=`<div class="spot" id="spot" hidden></div><div class="bub" id="bub" role="dialog" aria-modal="true" aria-labelledby="bubt" aria-describedby="bubx">
+   <div class="bub-k">${T.kind==='tour'?'Tanıtım':'Bu aşamada'}</div><h3 id="bubt">${st.t}</h3><p id="bubx">${st.x}</p>
+   <div class="bub-f">${T.kind==='tour'
+     ?`<button class="lnk" data-tour="skip">Atla</button><span class="sp"></span><span class="dots" aria-label="${T.i+1} / ${T.steps.length}">${T.steps.map((_,k)=>`<i class="${k===T.i?'on':''}"></i>`).join('')}</span><span class="sp"></span>${T.i>0?'<button data-tour="prev">Geri</button>':''}<button class="pri" data-tour="next" id="tnext">${last?'Başlayalım':'İleri'}</button>`
+     :`<button class="lnk" data-tour="off">İpuçlarını kapat</button><span class="sp"></span><button class="pri" data-tour="next" id="tnext">Anladım</button>`}</div></div>`;
+  placeTour(); const b=$('#tnext'); if(b) b.focus({preventScroll:true}); }
+function placeTour(){ if(!TOUR) return; const st=TOUR.steps[TOUR.i], spot=$('#spot'), bub=$('#bub'), ov=$('#tour'); if(!bub) return;
+  const vw=innerWidth, vh=innerHeight, M=12, bw=Math.min(340,vw-2*M); bub.style.width=bw+'px';
+  const el=st.sel&&document.querySelector(st.sel); if(el&&el.scrollIntoView) el.scrollIntoView({block:'nearest'});
+  const r=el?el.getBoundingClientRect():null, bh=bub.offsetHeight;
+  if(!r||!r.width){ spot.hidden=true; ov.classList.add('dim'); bub.style.left=(vw-bw)/2+'px'; bub.style.top=Math.max(M,(vh-bh)/2)+'px'; return; }
+  ov.classList.remove('dim');
+  const pad=5, sx=Math.max(3,r.left-pad), sy=Math.max(3,r.top-pad), sw=Math.min(vw-3,r.right+pad)-sx, sh=Math.min(vh-3,r.bottom+pad)-sy;
+  spot.hidden=false; Object.assign(spot.style,{left:sx+'px',top:sy+'px',width:sw+'px',height:sh+'px'});
+  let x,y;
+  if(vh-(sy+sh)>=bh+M*2){ y=sy+sh+M; x=sx+sw/2-bw/2; }
+  else if(sy>=bh+M*2){ y=sy-bh-M; x=sx+sw/2-bw/2; }
+  else if(vw-(sx+sw)>=bw+M*2){ x=sx+sw+M; y=sy+sh/2-bh/2; }
+  else if(sx>=bw+M*2){ x=sx-bw-M; y=sy+sh/2-bh/2; }
+  else if(vw-(sx+sw)>=200+M*2){ const w2=vw-(sx+sw)-M*2; bub.style.width=w2+'px'; const h2=bub.offsetHeight; x=sx+sw+M; y=Math.max(sy,M)+Math.min(sh,vh)/2-h2/2; bub.style.left=x+'px'; bub.style.top=clamp(y,M,Math.max(M,vh-h2-M))+'px'; return; }
+  else { x=(vw-bw)/2; y=vh-bh-M; }
+  bub.style.left=clamp(x,M,vw-bw-M)+'px'; bub.style.top=clamp(y,M,Math.max(M,vh-bh-M))+'px'; }
+function tourAct(a){ if(!TOUR) return;
+  if(a==='next'){ if(TOUR.i<TOUR.steps.length-1){ TOUR.i++; drawTour(); } else endTour(); }
+  else if(a==='prev'){ if(TOUR.i>0){ TOUR.i--; drawTour(); } }
+  else if(a==='skip') endTour();
+  else if(a==='off'){ PREF.tipsOff=true; endTour(); } }
+document.getElementById('tour').addEventListener('click',e=>{ const b=e.target.closest('[data-tour]'); if(b) tourAct(b.dataset.tour); });
+window.addEventListener('resize',()=>{ if(TOUR) placeTour(); });
+
 const COMPACT=['karisim','o_karisim','ekim','o_ekim','ortu','rapor'];
 function render(){
   const act=document.activeElement&&document.activeElement.id;
@@ -1216,7 +1313,7 @@ function render(){
   const sh=$('#sheet');
   if(sheet){ sh.hidden=false;
     sh.innerHTML=sheet==='info'
-      ?`<div class="sheet-card" role="dialog" aria-modal="true" aria-label="Bilgi"><div class="sheet-h"><h2>${(STP[idx]||{}).name||'Bilgi'}</h2><button data-act="shut" id="shutbtn">Kapat</button></div><div class="sheet-b"><h3 class="k">Gerçek üretimde</h3><p>${info}</p><h3 class="k">Nasıl oynanır</h3><p>Sağdaki kaydırıcılarla koşulları ayarlayın, sonra günü ilerletin. Göstergelerdeki yeşil bant hedef aralıktır; kenardaki renk yeşilse değer hedefte, sarıysa yakın, kırmızıysa uzaktır. Soldaki menü hangi aşamada olduğunuzu gösterir.</p></div></div>`
+      ?`<div class="sheet-card" role="dialog" aria-modal="true" aria-label="Bilgi"><div class="sheet-h"><h2>${(STP[idx]||{}).name||'Bilgi'}</h2><button data-act="shut" id="shutbtn">Kapat</button></div><div class="sheet-b"><h3 class="k">Gerçek üretimde</h3><p>${info}</p><h3 class="k">Nasıl oynanır</h3><p>Sağdaki kaydırıcılarla koşulları ayarlayın, sonra günü ilerletin. Göstergelerdeki yeşil bant hedef aralıktır; kenardaki renk yeşilse değer hedefte, sarıysa yakın, kırmızıysa uzaktır. Soldaki menü hangi aşamada olduğunuzu gösterir.</p><div class="btns"><button data-act="tour">Tanıtımı yeniden göster</button><button data-act="tips" aria-pressed="${!PREF.tipsOff}">Aşama ipuçları: ${PREF.tipsOff?'Kapalı':'Açık'}</button></div></div></div>`
       :`<div class="sheet-card" role="dialog" aria-modal="true" aria-label="Çiftlik defteri"><div class="sheet-h"><h2>Çiftlik defteri</h2><button data-act="shut" id="shutbtn">Kapat</button></div><div class="sheet-b"><div class="kv"><span>Parti</span><span>${G.batchNo}</span><span>Kasa</span><span>${tl(G.money)}</span>${G.best!==null?`<span>En iyi parti kârı</span><span>${tl(G.best)}</span>`:''}</div><ol id="log">${B.log.map(l=>`<li class="${l.kind}"><span>Gün ${l.d}</span>${l.msg}</li>`).join('')}</ol><div class="btns">${confirmReset?`<button class="danger" data-act="reset:ok">Evet, her şeyi sıfırla</button><button data-act="resetno">Vazgeç</button>`:`<button class="danger" data-act="reset">Yeni oyun başlat</button>`}</div></div></div>`;
   } else { sh.hidden=true; sh.innerHTML=''; }
   if(act){ const el=document.getElementById(act); if(el) el.focus({preventScroll:true}); }
@@ -1224,7 +1321,7 @@ function render(){
 }
 document.addEventListener('click',e=>{ if(e.target.id==='sheet'){ sheet=null; confirmReset=false; render(); return; } const b=e.target.closest('[data-act]'); if(!b||b.disabled) return;
   const [a,arg]=b.dataset.act.split(':'); const fn=ACT[a]; if(!fn) return;
-  fn(arg!==undefined&&!isNaN(+arg)?+arg:arg); save(); render(); });
+  fn(arg!==undefined&&!isNaN(+arg)?+arg:arg); save(); render(); setTimeout(maybeTip,120); });
 document.addEventListener('input',e=>{ const el=e.target; const bd=BIND[el.id];
   if(bd){ const v=+el.value; bd.set(v); const o=document.getElementById(el.id+'-o'); if(o) o.textContent=bd.show(v)+(bd.unit?' '+bd.unit:'');
     const L=$('#live'), st=STAGES[B.stage]; if(L&&st.live&&B.stage!=='hasat') L.innerHTML=st.live(); save(); return; }
@@ -1233,7 +1330,7 @@ document.addEventListener('input',e=>{ const el=e.target; const bd=BIND[el.id];
   if(k==='strain') B.ekim.strain=v; else if(k==='cas') B.ortu.type=v; else if(k==='talas') B.o.mix.type=v; else if(k==='ostrain') B.o.ekim.strain=v;
   else if(isO()) B.o.ekim[k]=el.checked; else B.ekim[k]=el.checked;
   save(); render(); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&sheet){ sheet=null; confirmReset=false; render(); } });
+document.addEventListener('keydown',e=>{ if(TOUR){ if(e.key==='Escape') tourAct(TOUR.kind==='tour'?'skip':'next'); else if(e.key==='ArrowRight') tourAct('next'); else if(e.key==='ArrowLeft') tourAct('prev'); return; } if(e.key==='Escape'&&sheet){ sheet=null; confirmReset=false; render(); } });
 scene.addEventListener('pointerdown',e=>{ if(B.stage!=='hasat') return; const r=scene.getBoundingClientRect(); pickAt(e.clientX-r.left,e.clientY-r.top); });
 
 function boot(data){
@@ -1242,6 +1339,7 @@ function boot(data){
   if(B.h&&B.h.phase==='between'&&!B.h.last) B.h.last={A:0,B:0,C:0,lost:0};
   if(!B.log.length) log('Çiftliğe hoş geldiniz. Kasada 250.000 ₺ var. İlk iş: ne yetiştireceğinizi seçip substratı hazırlayın.');
   render(); requestAnimationFrame(frame);
+  setTimeout(()=>{ if(!PREF.tour) startTour(); else maybeTip(); },450);
 }
 window.claude?.hot?.snapshot?.(()=>({G}));
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});

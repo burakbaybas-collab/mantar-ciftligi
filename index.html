@@ -1,0 +1,1175 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mantar Çiftliği</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: üstte kasa şeridi ve aşama çizelgesi; solda sahne (çiftlik görünümü) + bilgi notu, sağda kontrol paneli; altta çiftlik defteri */
+:root{
+  --bg:#E9ECE5; --surface:#FAFBF7; --surface2:#F0F2EC; --ink:#1E2420; --muted:#59645C; --line:#CDD3CA;
+  --accent:#B4521E; --accent-ink:#FFFFFF; --accent-soft:#F3DFD2;
+  --ok:#2E7A4D; --warn:#9C6610; --bad:#B0372B;
+  --font-d:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-b:"Inter", "Segoe UI", system-ui, sans-serif;
+  --font-m:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#121512; --surface:#1A1E1B; --surface2:#222723; --ink:#E6EAE3; --muted:#9AA59C; --line:#313833;
+  --accent:#E57D42; --accent-ink:#1B0F07; --accent-soft:#3A2618;
+  --ok:#5DC18B; --warn:#E3AB4C; --bad:#F07164; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#121512; --surface:#1A1E1B; --surface2:#222723; --ink:#E6EAE3; --muted:#9AA59C; --line:#313833;
+  --accent:#E57D42; --accent-ink:#1B0F07; --accent-soft:#3A2618;
+  --ok:#5DC18B; --warn:#E3AB4C; --bad:#F07164; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-b);font-size:14px;line-height:1.45}
+.app{max-width:1240px;margin:0 auto;padding-block:16px 40px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:14px}
+h1,h2,h3{font-family:var(--font-d);text-wrap:balance;margin:0}
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.brand small{display:block;color:var(--muted);font-size:12px;font-family:var(--font-b);font-weight:500}
+.stats{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+.stat{display:flex;flex-direction:column}
+.stat span{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.stat b{font-family:var(--font-m);font-size:16px;font-variant-numeric:tabular-nums}
+.stat b.neg{color:var(--bad)}
+.steps{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);background:var(--surface);border-radius:6px;overflow:hidden}
+.step{padding:8px 10px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:1px;min-width:0}
+.step:last-child{border-right:0}
+.step .n{font-family:var(--font-m);font-size:10.5px;color:var(--muted)}
+.step .t{font-family:var(--font-d);font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step.done{background:var(--surface2)}
+.step.done .t{color:var(--muted)}
+.step.cur{background:var(--accent);color:var(--accent-ink)}
+.step.cur .n{color:var(--accent-ink);opacity:.8}
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;align-items:start}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.scenewrap{position:relative;border-radius:6px;overflow:hidden;background:#231d19;border:1px solid var(--line)}
+#scene{display:block;width:100%;touch-action:manipulation}
+.scene-cap{position:absolute;left:10px;top:8px;font-family:var(--font-m);font-size:11px;color:#EFE6DA;background:rgba(20,14,10,.55);padding:3px 7px;border-radius:3px;pointer-events:none}
+.info{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.info h3{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);font-family:var(--font-b);font-weight:600;margin-bottom:6px}
+.info p{margin:0;max-width:68ch;color:var(--ink)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel h2{font-size:22px;font-weight:800;letter-spacing:-.01em}
+.panel .sub{color:var(--muted);margin-top:2px}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec-t{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl-h{display:flex;justify-content:space-between;gap:8px;font-weight:500}
+.ctl output{font-family:var(--font-m);font-variant-numeric:tabular-nums}
+.ctl small{color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--accent);height:22px;margin:0}
+.gauges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.g{border:1px solid var(--line);border-radius:4px;padding:8px 10px;background:var(--surface2);display:flex;flex-direction:column;gap:5px;min-width:0}
+.g-h{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font-size:12px;color:var(--muted)}
+.g-h b{font-family:var(--font-m);font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.g-h i{font-style:normal;font-size:11px;color:var(--muted);margin-left:2px}
+.g-bar{position:relative;height:8px;background:var(--line);border-radius:2px}
+.g-zone{position:absolute;top:0;bottom:0;background:var(--ok);opacity:.35;border-radius:2px}
+.g-mark{position:absolute;top:-3px;width:4px;height:14px;margin-left:-2px;border-radius:1px;background:var(--ink)}
+.g-s{display:flex;justify-content:space-between;font-family:var(--font-m);font-size:10px;color:var(--muted)}
+.g-ok{border-left:4px solid var(--ok)}
+.g-warn{border-left:4px solid var(--warn)}
+.g-bad{border-left:4px solid var(--bad)}
+.g-bad .g-h b{color:var(--bad)}
+.prog{display:flex;flex-direction:column;gap:4px}
+.prog .ph{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.prog .ph b{font-family:var(--font-m);color:var(--ink)}
+.prog .pb{height:10px;background:var(--line);border-radius:2px;overflow:hidden}
+.prog .pb span{display:block;height:100%;background:var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;cursor:pointer;border-radius:4px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);padding:9px 13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;line-height:1.2}
+button:hover:not(:disabled){border-color:var(--ink)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.pri:hover:not(:disabled){filter:brightness(1.08);border-color:var(--accent)}
+button.danger{border-color:var(--bad);color:var(--bad);background:transparent}
+button:disabled{opacity:.45;cursor:not-allowed}
+button small{font-weight:500;opacity:.8;font-family:var(--font-m);font-size:11px}
+.choices{display:grid;gap:8px}
+.choice{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:4px;padding:9px 11px;background:var(--surface2);cursor:pointer}
+.choice input{margin-top:3px;accent-color:var(--accent)}
+.choice b{display:block}
+.choice span{color:var(--muted);font-size:12.5px}
+.choice .pr{margin-left:auto;font-family:var(--font-m);font-size:12px;white-space:nowrap;color:var(--ink)}
+.choice.on{border-color:var(--accent);background:var(--accent-soft)}
+.note{border-radius:4px;padding:9px 11px;font-size:13px;background:var(--surface2);border:1px solid var(--line)}
+.note.bad{border-color:var(--bad);color:var(--bad)}
+.note.warn{border-color:var(--warn)}
+.note.ok{border-color:var(--ok)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px}
+.kv span:nth-child(odd){color:var(--muted)}
+.kv span:nth-child(even){font-family:var(--font-m);text-align:right;font-variant-numeric:tabular-nums}
+.kv .tot{border-top:1px solid var(--line);padding-top:5px;color:var(--ink)!important;font-weight:600}
+.chart{width:100%;height:auto;display:block}
+.chart .ln{fill:none;stroke:var(--accent);stroke-width:2}
+.chart .bd{fill:var(--ok);opacity:.16}
+.chart .ax{fill:var(--muted);font-family:var(--font-m);font-size:9px}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .pt{fill:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-2px;margin-right:5px;border:1px solid rgba(0,0,0,.25)}
+.logwrap{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px}
+.logwrap h3{font-size:15px;margin-bottom:8px}
+#log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;max-height:220px;overflow:auto}
+#log li{display:grid;grid-template-columns:58px 1fr;gap:8px;font-size:13px;padding:3px 0;border-bottom:1px dashed var(--line)}
+#log li span{font-family:var(--font-m);color:var(--muted);font-size:11.5px;padding-top:1px}
+#log li.bad{color:var(--bad)}
+#log li.ok{color:var(--ok)}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{border:0;border-radius:0;justify-content:center;background:var(--surface2);flex-direction:column;gap:2px;padding:9px 8px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button small{font-family:var(--font-b);font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.cardrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.card{border:1px solid var(--line);border-radius:4px;padding:10px 12px;background:var(--surface2);display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.card span{color:var(--muted);font-size:12.5px}
+.stars{font-size:26px;letter-spacing:4px;color:var(--accent)}
+.shop{display:grid;gap:8px}
+.shop .it{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:4px;padding:9px 11px;background:var(--surface2)}
+.shop .it div{min-width:0}
+.shop .it span{color:var(--muted);font-size:12.5px;display:block}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th,.tbl td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td{font-family:var(--font-m)}
+.tbl td:first-child{font-family:var(--font-b)}
+@media (max-width:900px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .steps{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .step:nth-child(4){border-right:0}
+  .step:nth-child(-n+4){border-bottom:1px solid var(--line)}
+}
+@media (max-width:600px){ .step{padding:7px 8px} .step .n .s{display:none} .step .t{white-space:normal;hyphens:auto;font-size:12.5px;line-height:1.2} }
+@media (max-width:440px){ .gauges{grid-template-columns:minmax(0,1fr)} .brand h1{font-size:22px} }
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+
+<div class="app" lang="tr">
+  <header class="top">
+    <div class="brand">
+      <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><path d="M4 20c0-9 7-15 16-15s16 6 16 15c0 2-1 3-3 3H7c-2 0-3-1-3-3z" fill="var(--accent)"/><path d="M15 23h10l-1 11c0 1-1 2-2 2h-4c-1 0-2-1-2-2z" fill="var(--ink)" opacity=".85"/><circle cx="13" cy="14" r="2" fill="var(--surface)"/><circle cx="24" cy="11" r="1.6" fill="var(--surface)"/><circle cx="28" cy="17" r="1.3" fill="var(--surface)"/></svg>
+      <div><h1>Mantar Çiftliği</h1><small>Talaş torbasından ve kompost yığınından hasat kasasına</small></div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+  <nav class="steps" id="steps" aria-label="Üretim aşamaları"></nav>
+  <main class="grid">
+    <section class="col">
+      <div class="scenewrap"><canvas id="scene" aria-label="Çiftlik görünümü"></canvas><div class="scene-cap" id="sceneCap"></div></div>
+      <div class="info" id="info"></div>
+    </section>
+    <section class="panel" id="panel" aria-live="polite"></section>
+  </main>
+  <section class="logwrap"><h3>Çiftlik defteri</h3><ol id="log"></ol></section>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const fmt=(n,d=0)=>Number(n).toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const tl=n=>fmt(Math.round(n))+' ₺';
+const band=(v,lo,hi,tol)=>{ if(v>=lo&&v<=hi) return 1; const d=v<lo?lo-v:v-hi; return clamp(1-d/tol,0,1); };
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const rng=Math.random;
+
+/* ---------- veri ---------- */
+const VENT=['Kapalı','Düşük','Orta','Yüksek'];
+const STRAINS=[
+  {name:'Beyaz – standart hat',price:140,yield:1.0,pm:1,brown:false,d:'Dengeli, hataları affeden hat.'},
+  {name:'Beyaz – yüksek verimli hat',price:210,yield:1.12,pm:1,brown:false,d:'%12 daha fazla ürün, misel daha pahalı.'},
+  {name:'Kestane (kahverengi) hat',price:180,yield:0.9,pm:1.35,brown:true,d:'Daha az ürün, %35 daha yüksek satış fiyatı.'},
+];
+const CASINGS=[
+  {name:'Siyah torf + kireç',price:950,q:1.0,risk:1,d:'Klasik karışım, suyu iyi tutar.'},
+  {name:'Siyah + beyaz torf karışımı',price:1250,q:1.07,risk:1,d:'Daha gözenekli, iğne başları daha düzenli çıkar.'},
+  {name:'Bahçe toprağı',price:250,q:0.72,risk:1.8,d:'Ucuz ama yapısı bozuk ve hastalık taşır.'},
+];
+const WET=['Kuru','İdeal','Çok ıslak'];
+const PRICE={A:115,B:78,C:48};
+const UPG=[
+  {id:'hepa',name:'HEPA filtreli kuluçka havası',price:45000,d:'Küf ve sinek riski %40 azalır.'},
+  {id:'klima',name:'Hassas iklim kontrol sistemi',price:35000,d:'Kompost sıcaklığı ayara daha hızlı uyar, CO₂ daha kolay düşer.'},
+  {id:'paket',name:'Paketleme ve soğuk zincir',price:55000,d:'Tüm satış fiyatları %12 artar.'},
+  {id:'saha',name:'Genişletilmiş kompost sahası',price:70000,d:'Karışım üst sınırları %50 artar.'},
+];
+const STEPS=[
+  {name:'Kompost',sub:'Faz I',st:['karisim','faz1']},
+  {name:'Pastörizasyon',sub:'Faz II',st:['faz2']},
+  {name:'Misel ekimi',sub:'Tohumlama',st:['ekim']},
+  {name:'Kuluçka odası',sub:'Misel sarması',st:['kulucka']},
+  {name:'Üretim odası',sub:'Örtü ve şok',st:['ortu','caserun','sok']},
+  {name:'Hasat',sub:'3 flaş',st:['hasat']},
+  {name:'Satış',sub:'Parti raporu',st:['rapor']},
+];
+
+/* ---------- durum ---------- */
+function newBatch(sp){ sp=sp||'o'; return{
+  sp,stage:sp==='o'?'o_karisim':'karisim',costs:{},log:[],notes:{},o:sp==='o'?newO():null,
+  mix:{straw:5,manure:4,gypsum:150,water:12},mixQ:0,mixInfo:null,
+  f1:null,f2:null,comp:null,
+  ekim:{rate:0.6,strain:0,dez:true,onluk:true,filtre:false},
+  spawn:null,bio:{contam:0,spots:0,pests:0,pestDays:0},
+  kul:null,ortu:{type:0,ph:7.5,thick:4.5,wet:1},ortuQ:1,cr:null,ruffled:false,
+  sok:null,pinQ:1,kulF:1,h:null,rep:null
+};}
+function newGame(){return{money:250000,day:1,batchNo:1,up:{},best:null,history:[],lastSp:'o',B:newBatch('o')};}
+let G;
+function load(){ try{ const s=localStorage.getItem('mantarCiftligi.v1'); if(s){ const g=JSON.parse(s); if(g&&g.B) return g; } }catch(e){} return null; }
+function save(){ try{ localStorage.setItem('mantarCiftligi.v1',JSON.stringify(G)); }catch(e){} }
+let B;
+
+function pay(label,amt){ amt=Math.round(amt); G.money-=amt; B.costs[label]=(B.costs[label]||0)+amt; }
+function log(msg,kind=''){ B.log.unshift({d:G.day,msg,kind}); if(B.log.length>80) B.log.pop(); }
+
+/* ---------- hesaplar ---------- */
+const cap=()=>G.up.saha?1.5:1;
+function mixStats(m){
+  const sDM=m.straw*0.88, mDM=m.manure*0.65, gDM=m.gypsum/1000;
+  const DM=sDM+mDM+gDM;
+  const N=sDM*0.005+mDM*0.035, C=sDM*0.45+mDM*0.32;
+  const water=m.straw*0.12+m.manure*0.35+m.water;
+  return {DM,N:N/DM*100,CN:C/N,moist:water/(DM+water)*100,gyp:gDM/DM*100,total:DM+water};
+}
+const mixScore=s=>0.3*band(s.N,1.5,1.9,0.6)+0.25*band(s.CN,20,28,8)+0.3*band(s.moist,70,77,8)+0.15*band(s.gyp,3,6,3.5);
+const mixCost=m=>m.straw*3500+m.manure*2000+m.gypsum*6+m.water*40+4000;
+const ventCO2=(v)=>Math.round(450+4200/(1+v*(G.up.klima?3:2.3)));
+function ortuCalc(){ const o=B.ortu, c=CASINGS[o.type];
+  const q=c.q*band(o.ph,7.2,7.9,1.2)*band(o.thick,4,5,2.2)*[0.8,1,0.85][o.wet];
+  const area=B.comp?B.comp.t*1000/85:180; const vol=area*o.thick/100;
+  return {q,area,vol,cost:vol*c.price+3000}; }
+
+/* ---------- aksiyonlar ---------- */
+const ACT={
+  mix(){ const s=mixStats(B.mix); pay('Kompost hammaddesi',mixCost(B.mix));
+    B.mixInfo=s; B.mixQ=mixScore(s);
+    B.f1={day:0,temp:28,o2:18,moist:s.moist,prog:0,anaer:0,turns:0,hist:[28],anim:-9};
+    B.stage='faz1';
+    log(`Karışım kuruldu: ${fmt(B.mix.straw,1)} t sap, ${fmt(B.mix.manure,1)} t gübre, ${fmt(B.mix.gypsum)} kg jips, ${fmt(B.mix.water)} m³ su. Azot %${fmt(s.N,2)}, C/N ${fmt(s.CN,1)}, nem %${fmt(s.moist,1)}.`);
+    if(B.mixQ<0.8) log('Karışım oranları hedeflerin dışında; kompost kalitesi düşük olabilir.','bad');
+  },
+  f1(a){ const f=B.f1; if(f.day>=18) return;
+    if(a==='aktar'){ f.o2=19; f.temp-=12; f.moist-=1.5; f.turns++; f.anim=performance.now()/1000; pay('Kompost aktarma',1800); log(`Yığın aktarıldı (${f.turns}. aktarma).`); }
+    if(a==='sula'){ f.moist+=3; pay('Su',400); log('Yığına su verildi.'); }
+    const mf=clamp(1-Math.abs(f.moist-74)/18,0.1,1), of=f.o2>6?1:f.o2/6;
+    const target=40+42*mf*of;
+    f.temp+=(target-f.temp)*0.6;
+    f.o2=Math.max(0,f.o2-(4+Math.max(0,f.temp-40)*0.04));
+    f.moist-=0.5+Math.max(0,f.temp-50)*0.035;
+    if(f.o2<2){ f.anaer++; log('Yığının içi oksijensiz kaldı, kötü koku başladı (anaerobik bölge).','bad'); }
+    const tf=f.temp>=62&&f.temp<=82?1:f.temp>=50?0.75:0.35;
+    const was=f.prog;
+    f.prog=Math.min(100,f.prog+10.5*tf*mf*(f.o2>=2?1:0.5));
+    f.day++; G.day++; f.hist.push(+f.temp.toFixed(1));
+    if(f.prog>=100&&was<100) log('Faz I kompostu olgunlaştı. Tünele taşıyabilirsiniz.','ok');
+  },
+  f1done(){ const f=B.f1;
+    const q1=B.mixQ*(1-0.07*f.anaer)*(0.55+0.45*Math.min(1,f.prog/100))*(0.6+0.4*band(f.moist,68,78,10));
+    B.q1=clamp(q1,0.2,1);
+    const nh3=Math.round(220+B.mixInfo.N*140+f.anaer*25);
+    B.f2={hour:0,set:52,fresh:20,temp:48,nh3,nh30:nh3,pastH:0,over:0,hist:[48]};
+    if(f.anaer) B.notes.anaer=f.anaer; if(f.prog<100) B.notes.f1short=1; if(B.mixQ<0.8) B.notes.mix=1;
+    B.stage='faz2'; pay('Tünele doldurma',3500);
+    log(`Kompost pastörizasyon tüneline dolduruldu. Amonyak ${nh3} ppm.`);
+  },
+  f2(n){ const f=B.f2; for(let i=0;i<n;i++){ if(f.hour>=14*24) break;
+      const self=f.temp>=40&&f.temp<=60?3:1;
+      const target=f.set+self-f.fresh*0.04;
+      f.temp+=(target-f.temp)*(G.up.klima?0.6:0.45);
+      const wasPast=f.pastH>=8;
+      if(f.temp>=57&&f.temp<=63) f.pastH+=4;
+      if(f.temp>63){ f.over+=4; if(f.over===4) log('Kompost 63 °C\'yi aştı! Faydalı mikroorganizmalar ölüyor.','bad'); }
+      if(!wasPast&&f.pastH>=8) log('Pastörizasyon tamamlandı (8 saat 57–63 °C). Şimdi koşullandırma: 45–48 °C ve taze hava.','ok');
+      let k=f.temp>=44&&f.temp<=50?0.16:(f.temp>=40&&f.temp<56)?0.08:0.025;
+      k*=0.4+f.fresh/100*0.9;
+      const before=f.nh3; f.nh3=Math.max(0,f.nh3*(1-k)-1);
+      if(before>10&&f.nh3<=10) log('Amonyak 10 ppm\'in altına indi. Kompost ekime hazır.','ok');
+      pay('Tünel enerjisi',180+Math.max(0,f.set-20)*9+f.fresh*5);
+      f.hour+=4; if(f.hour%24===0) G.day++;
+      f.hist.push(+f.temp.toFixed(1)); }
+  },
+  f2done(){ const f=B.f2, days=f.hour/24;
+    const past=f.pastH>=8;
+    const q2=(past?1:0.85)*(1-Math.min(0.35,f.over*0.012))*(1-Math.max(0,days-8)*0.03);
+    B.comp={t:B.mixInfo.total*0.6*(1-Math.max(0,days-7)*0.02),q:clamp(B.q1*q2,0.15,1),nh3:Math.round(f.nh3),past};
+    if(!past) B.notes.past=1; if(f.over) B.notes.over=f.over; if(f.nh3>10) B.notes.nh3=Math.round(f.nh3);
+    B.stage='ekim'; pay('Tünel boşaltma ve soğutma',2500);
+    log(`Tünel boşaltıldı: ${fmt(B.comp.t,1)} ton kompost, kalite %${fmt(B.comp.q*100)}.`);
+    if(f.nh3>10) log(`Kompostta hâlâ ${Math.round(f.nh3)} ppm amonyak var; misel zarar görecek.`,'bad');
+  },
+  ekim(){ const e=B.ekim, st=STRAINS[e.strain], c=B.comp;
+    const kg=c.t*1000*e.rate/100;
+    pay('Misel (tohumluk)',kg*st.price);
+    if(e.dez) pay('Hijyen',5000); if(e.onluk) pay('Hijyen',2000); if(e.filtre) pay('Hijyen',8000);
+    const dmg=c.nh3>10?Math.min(0.6,(c.nh3-10)/60):0;
+    const hepa=G.up.hepa?0.6:1;
+    const risk=0.09*(c.past?1:2.6)*(e.dez?0.65:1)*(e.onluk?0.85:1)*(e.filtre?0.7:1)*hepa;
+    const pestRisk=0.07*(e.filtre?0.5:1)*hepa*(c.past?1:1.8);
+    B.spawn={kg,rate:e.rate,strain:e.strain,dmg,risk,pestRisk};
+    B.kul={day:0,set:23,hum:93,vent:1,ctemp:26,col:0,co2:3600,dmg:0,hist:[26]};
+    B.stage='kulucka';
+    log(`${fmt(kg)} kg ${st.name} miseli komposta karıştırıldı ve raflara dolduruldu.`);
+    if(dmg>0) log('Amonyak miseli yaktı; bazı tohumlar çimlenmedi.','bad');
+  },
+  grow(n){ const mode=B.stage==='kulucka'?'kul':'cr'; const S=mode==='kul'?B.kul:B.cr;
+    for(let i=0;i<n;i++){ if(S.col>=100||S.day>=30) break; const sp=B.bio.spots, pe=B.bio.pests; growDay(S,mode); if(n>1&&(B.bio.spots>sp||B.bio.pests>pe)) break; } },
+  clean(){ const b=B.bio; pay('Hastalık mücadelesi',1200*b.spots); log(`${b.spots} küf lekesi kireç ve tuzla kapatıldı, çevresi temizlendi.`,'ok'); b.spots=0; },
+  trap(){ pay('Hastalık mücadelesi',1500); log('Sarı yapışkan tuzaklar ve ışık tuzağı kuruldu, sinekler kontrol altında.','ok'); B.bio.pests=0; },
+  kuldone(){ const S=B.kul; B.kulF=clamp(1-S.dmg/100,0.3,1)*Math.min(1,0.4+0.6*S.col/100);
+    if(S.dmg>0) B.notes.heat=Math.round(S.dmg); B.stage='ortu';
+    log(`Kuluçka bitti (${S.day} gün). Kolonizasyon %${fmt(S.col)}.`); },
+  ortu(){ const o=ortuCalc(); pay('Örtü toprağı',o.cost); B.ortuQ=clamp(o.q,0.4,1.07);
+    if(o.q<0.85) B.notes.casing=1;
+    B.cr={day:0,set:23,hum:94,vent:1,ctemp:B.kul.ctemp,col:0,co2:5000,dmg:0,hist:[+B.kul.ctemp.toFixed(1)]};
+    B.stage='caserun';
+    log(`${fmt(o.vol,1)} m³ örtü toprağı (${CASINGS[B.ortu.type].name}) ${fmt(B.ortu.thick,1)} cm kalınlıkta serildi.`); },
+  ruffle(){ B.ruffled=true; pay('Örtü karıştırma',2500); log('Örtü toprağı karıştırıldı (ruffling); misel daha eşit dağılacak.','ok'); },
+  crdone(){ const S=B.cr; B.ortuQ*=Math.min(1,0.5+0.5*S.col/100);
+    B.sok={day:0,set:22,hum:92,vent:1,ctemp:S.ctemp,co2:ventCO2(1),pins:0,qsum:0,qdays:0,hist:[+S.ctemp.toFixed(1)]};
+    B.stage='sok'; log('Misel örtü toprağının yüzeyine ulaştı. Şoklama zamanı.'); },
+  sok(n){ const S=B.sok; for(let i=0;i<n;i++){ if(S.pins>=100||S.day>=12) break; sokDay(S); } },
+  sokdone(){ const S=B.sok; B.pinQ=(S.qdays?S.qsum/S.qdays:0.4)*Math.min(1,0.3+0.7*S.pins/100);
+    if(B.pinQ<0.75) B.notes.pin=1; startHarvest(); },
+  flush(){ startFlush(); },
+  water(w){ const h=B.h;
+    if(isO()){ h.waterMult=[0.85,1,1.12][w]; h.wetBoost=[-2,0,2][w]; pay('Nemlendirme',[0,800,1500][w]); pay('Enerji ve işçilik',10*900); G.day+=10;
+      log(`Flaşlar arası: torbalar ${['kuru dinlendirildi','püskürtülerek nemlendirildi','suya batırıldı'][w]}. 10 gün sonra yeni flaş geliyor.`); }
+    else { h.waterMult=[0.82,1,0.97][w]; h.wetBoost=[-1,0,3][w]; pay('Sulama',[600,1000,1600][w]); pay('Enerji ve işçilik',7*900); G.day+=7;
+      log(`Flaşlar arası sulama: ${['az','orta','bol'][w]}. 7 gün sonra yeni flaş geliyor.`); }
+    startFlush(); },
+  sell(){ finishBatch(); },
+  buy(id){ const u=UPG.find(x=>x.id===id); if(!u||G.up[id]||G.money<u.price) return; G.money-=u.price; G.up[id]=true; log(`Yatırım yapıldı: ${u.name}.`,'ok'); },
+  next(){ G.batchNo++; G.day+=2; B=G.B=newBatch(G.lastSp||B.sp); log(`${G.batchNo}. parti başladı.`); },
+  species(x){ const lg=B.log; B=G.B=newBatch(x); B.log=lg; G.lastSp=x; log(x==='o'?'Bu parti için istiridye mantarı seçildi.':'Bu parti için beyaz şapkalı mantar seçildi.'); },
+  reset(arg){ if(arg!=='ok'){ confirmReset=true; return; } G=newGame(); B=G.B; H=null; confirmReset=false; log('Yeni çiftlik kuruldu. Kasada 250.000 ₺ var.'); },
+  resetno(){ confirmReset=false; },
+};
+let confirmReset=false;
+
+function growDay(S,mode){
+  const k=G.up.klima?0.85:0.6;
+  const metab=mode==='kul'?1.5+6.5*Math.sin(Math.PI*Math.min(1,S.col/100)):2.5;
+  S.ctemp+=((S.set+metab-S.vent*1.5)-S.ctemp)*k;
+  S.co2=Math.round(900+9000*(0.3+0.7*S.col/100)/(1+S.vent*1.3));
+  const t=S.ctemp;
+  const tf=(t>=24&&t<=27)?1:(t>=22&&t<=28)?0.78:(t>=20&&t<=30)?0.5:t>30?0.15:0.25;
+  if(t>30){ S.dmg+=(t-30)*2.5; log(`Kompost ${fmt(t,1)} °C! Misel aşırı ısıdan zarar görüyor.`,'bad'); }
+  const hf=S.hum>=90?1:S.hum>=85?0.8:0.55;
+  if(mode==='kul'){ const cf=S.co2>=4000?1.05:0.95; const sf=0.7+0.4*Math.min(1,B.spawn.rate);
+    S.col=Math.min(100,S.col+7.4*tf*hf*cf*sf*(1-B.spawn.dmg)*(0.6+0.4*B.comp.q)); }
+  else { const th=B.ortu.thick>5.5?0.8:1; S.col=Math.min(100,S.col+15*tf*hf*th*(0.7+0.3*Math.min(1,B.ortuQ))); }
+  pay('Enerji ve işçilik',700+Math.abs(S.set-15)*45+S.vent*220+Math.max(0,S.hum-85)*30);
+  riskDay(S,mode==='cr'?CASINGS[B.ortu.type].risk*(B.ortu.wet===2?1.4:1)*0.8:1);
+  S.day++; G.day++; S.hist.push(+S.ctemp.toFixed(1));
+  if(S.col>=100) log(mode==='kul'?'Misel kompostu tamamen sardı! Kuluçka tamam.':'Misel örtü toprağını sardı.','ok');
+}
+function riskDay(S,mult){
+  const b=B.bio; const r=B.spawn.risk*mult*(S.ctemp>28?1.6:1)*(S.hum>96?1.5:1);
+  if(rng()<r){ b.spots++; log('Yeşil küf (Trichoderma) lekesi görüldü!','bad'); }
+  if(rng()<B.spawn.pestRisk*mult){ if(!b.pests) log('Mantar sinekleri (Sciarid) görüldü!','bad'); b.pests++; }
+  b.contam=Math.min(60,b.contam+b.spots*1.4+b.pests*0.3);
+  if(b.pests) b.pestDays++;
+}
+function sokDay(S){
+  const k=G.up.klima?0.7:0.45;
+  S.ctemp+=(S.set+1.5-S.vent*0.6-S.ctemp)*k;
+  S.co2=ventCO2(S.vent);
+  const humEff=S.hum-S.vent*1.2;
+  const q=band(S.ctemp,16,19,4)*band(S.co2,0,1000,1400)*band(humEff,85,93,7);
+  const before=S.pins;
+  S.pins=Math.min(100,S.pins+38*q);
+  if(q>0.15){ S.qsum+=q; S.qdays++; }
+  pay('Enerji ve işçilik',700+Math.abs(S.set-15)*45+S.vent*260+Math.max(0,S.hum-85)*30);
+  riskDay(S,0.5);
+  S.day++; G.day++; S.hist.push(+S.ctemp.toFixed(1));
+  if(before<30&&S.pins>=30) log('Örtü toprağında ilk iğne başları (primordia) göründü!','ok');
+  if(S.pins>=100) log('İğne başları tamamlandı. Hasada hazırlanın.','ok');
+  if(q<0.15&&S.day>=3) log('İğne başı oluşmuyor: sıcaklığı 16–19 °C\'ye düşürün, CO₂\'yi 1000 ppm altına indirin.','bad');
+}
+
+/* ---------- hasat ---------- */
+let H=null;
+function startHarvest(){
+  const b=B.bio, st=STRAINS[B.spawn.strain];
+  const BE=0.31*(0.45+0.55*B.comp.q)*B.kulF*(1-Math.min(0.7,b.contam/100))*(1-Math.min(0.3,b.pestDays*0.012))*B.ortuQ*(0.55+0.45*B.pinQ)*(1-B.spawn.dmg*0.6)*st.yield*(B.ruffled?1.04:1);
+  if(b.contam>5) B.notes.contam=Math.round(b.contam); if(b.pestDays>3) B.notes.pest=b.pestDays;
+  B.h={flush:0,phase:'ready',totalKg:B.comp.t*1000*BE,BE,kg:{A:0,B:0,C:0},lost:0,waterMult:1,wetBoost:0,set:17,hum:90,vent:2};
+  B.stage='hasat';
+  log('Üretim odası hasada hazır. İlk flaş geliyor.');
+}
+const isO=()=>B.sp==='o';
+function curStrain(){ return isO()?OSTR[B.o.spawn.strain]:STRAINS[B.spawn.strain]; }
+function startFlush(){
+  const h=B.h,k=h.flush,O=isO(); const kg=h.totalKg*(O?[0.55,0.3,0.15]:[0.5,0.32,0.18])[k]*h.waterMult;
+  const n=(O?[24,18,12]:[44,34,26])[k]; const r=mulberry32(G.batchNo*131+k*17+3); const sp=[];
+  if(O){ const slots=oLayout().slots.slice(); for(let i=slots.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [slots[i],slots[j]]=[slots[j],slots[i]]; }
+    for(let i=0;i<n;i++) sp.push({x:slots[i].x,y:slots[i].y,born:r()*20,j:0.85+r()*0.3,s:0,bl:false,ls:false,dry:false,pk:false,dead:false}); }
+  else for(let i=0;i<n;i++){ let x,y,ok=false,tries=0;
+    while(!ok&&tries<40){ x=0.06+r()*0.88; y=0.12+r()*0.8; ok=sp.every(s=>Math.hypot((s.x-x)*1.6,s.y-y)>0.085); tries++; }
+    sp.push({x,y,born:r()*24,j:0.85+r()*0.3,s:0,bl:false,ls:false,pk:false,dead:false}); }
+  H={t:0,sp,kgPer:kg/n,fl:[],acc:{A:0,B:0,C:0,lost:0},last:performance.now()};
+  h.phase='running'; liveTick=0;
+}
+function hClimate(){ const h=B.h;
+  if(isO()){ const st=curStrain(), mid=(st.fr[0]+st.fr[1])/2;
+    return {rate:(1/14)*Math.max(0.3,1+(h.set-mid)*0.08)*(st.fast||1), co2:oCO2(h.vent), humEff:h.hum-h.vent*1.5+h.wetBoost-(CUTS[B.o.cut].dry?4:0)}; }
+  return {rate:(1/15)*Math.max(0.3,1+(h.set-17)*0.13), co2:ventCO2(h.vent), humEff:h.hum-h.vent*1.2+h.wetBoost}; }
+function harvestUpdate(dt){
+  const h=B.h, O=isO(); H.t+=dt;
+  const c=hClimate();
+  let active=0;
+  for(const s of H.sp){ if(s.pk||s.dead) continue; active++; if(H.t<s.born) continue;
+    const prev=s.s; s.s+=dt*c.rate*s.j;
+    if(prev<0.45&&s.s>=0.45){
+      if(O){ const st=curStrain(); if(c.co2>1000||h.light<6||h.set<st.fr[0]-3||h.set>st.fr[1]+3) s.ls=true; if(c.humEff<78) s.dry=true; }
+      else if(c.co2>1100) s.ls=true; }
+    const blT=O?96:93;
+    if(s.s>0.3&&!s.bl&&c.humEff>blT&&Math.random()<dt*0.02*(c.humEff-blT)) s.bl=true;
+    if(s.s>1.2){ s.dead=true; H.acc.lost+=H.kgPer*1.1; } }
+  if(active===0) endFlush();
+}
+function pickAt(px,py){
+  if(!H||B.h.phase!=='running') return;
+  const O=isO(); let best=null,bd=1e9;
+  for(const s of H.sp){ if(s.pk||s.dead||H.t<s.born||s.s<0.12) continue;
+    const p=bedPos(s), r=mushR(s.s)*(O?1.5:1)+10, d=Math.hypot(p.x-px,p.y-py);
+    if(d<r&&d<bd){bd=d;best=s;} }
+  if(!best) return;
+  const h=B.h, s=best; let w=H.kgPer*Math.min(1.15,0.35+s.s), cls;
+  if(s.s<0.45){cls='C';w*=0.7;} else if(s.s<0.75) cls='A'; else if(s.s<0.92) cls='B'; else cls='C';
+  if(s.bl||s.ls) cls=cls==='A'?'B':'C';
+  if(O){ if(s.dry) w*=0.85; } else if(hClimate().humEff<84) w*=0.9;
+  s.pk=true; H.acc[cls]+=w;
+  const p=bedPos(s); H.fl.push({x:p.x,y:p.y,t:H.t,txt:`${cls} +${fmt(w,1)} kg`,c:cls==='A'?'#8BE0A6':cls==='B'?'#F2C66B':'#F09A8A'});
+}
+function endFlush(){
+  const h=B.h,a=H.acc; const got=a.A+a.B+a.C;
+  h.kg.A+=a.A; h.kg.B+=a.B; h.kg.C+=a.C; h.lost+=a.lost;
+  pay('Hasat işçiliği',got*6); pay('Enerji ve işçilik',4500+h.vent*600+(h.light||0)*150);
+  log(`${h.flush+1}. flaş: ${fmt(got)} kg toplandı (A ${fmt(a.A)} · B ${fmt(a.B)} · C ${fmt(a.C)}), ${fmt(a.lost)} kg ${isO()?'aşırı olgunlaşıp bozuldu':'çürüdü'}.`, a.lost>got*0.15?'bad':'ok');
+  h.last={...a}; h.flush++; h.phase=h.flush>=3?'done':'between'; H=null; G.day+=3; save(); render();
+}
+function finishBatch(){
+  const h=B.h, st=curStrain(), mult=st.pm*(G.up.paket?1.12:1), P=isO()?PRICE_O:PRICE;
+  const rev={A:h.kg.A*P.A*mult,B:h.kg.B*P.B*mult,C:h.kg.C*P.C*mult};
+  const revenue=rev.A+rev.B+rev.C; G.money+=revenue;
+  const cost=Object.values(B.costs).reduce((a,b)=>a+b,0);
+  const total=h.kg.A+h.kg.B+h.kg.C;
+  const BE=total/(B.comp.t*1000)*100;
+  if(total>0&&h.kg.A/total<0.5) B.notes.late=1;
+  if(h.lost>total*0.1) B.notes.lost=Math.round(h.lost);
+  B.rep={rev,revenue,cost,profit:revenue-cost,total,BE,mult};
+  G.history.push({n:G.batchNo,sp:B.sp,profit:Math.round(revenue-cost),BE:+BE.toFixed(1)});
+  if(G.best===null||revenue-cost>G.best) G.best=Math.round(revenue-cost);
+  B.stage='rapor'; log(`Ürün satıldı: ${tl(revenue)} gelir. Parti kârı ${tl(revenue-cost)}.`, revenue>cost?'ok':'bad');
+}
+
+/* ---------- arayüz parçaları ---------- */
+let BIND={};
+function slider(id,label,val,min,max,step,unit,set,hint,show){
+  BIND[id]={set,unit,show:show||(v=>fmt(v,step<1?(step<0.1?2:1):0))};
+  return `<label class="ctl" for="${id}"><span class="ctl-h"><span>${label}</span><output id="${id}-o">${BIND[id].show(val)}${unit?' '+unit:''}</output></span><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}">${hint?`<small>${hint}</small>`:''}</label>`;
+}
+function gauge(label,v,unit,min,max,lo,hi,dec=0){
+  const p=x=>clamp((x-min)/(max-min)*100,0,100);
+  const st=(v>=lo&&v<=hi)?'ok':(band(v,lo,hi,(max-min)*0.12)>0?'warn':'bad');
+  const fl=v=>fmt(v,dec);
+  return `<div class="g g-${st}"><div class="g-h"><span>${label}</span><b>${fl(v)}<i>${unit}</i></b></div><div class="g-bar"><span class="g-zone" style="left:${p(lo)}%;width:${Math.max(1.5,p(hi)-p(lo))}%"></span><span class="g-mark" style="left:${p(v)}%"></span></div><div class="g-s"><span>${fmt(min)}</span><span>hedef ${fl(lo)}–${fl(hi)}</span><span>${fmt(max)}</span></div></div>`;
+}
+function prog(label,v,txt){ return `<div class="prog"><div class="ph"><span>${label}</span><b>${txt||'%'+fmt(v)}</b></div><div class="pb"><span style="width:${clamp(v,0,100)}%"></span></div></div>`; }
+function chart(hist,lo,hi,okLo,okHi,xlab){
+  const W=320,Hh=96,pl=26,pr=6,pt=6,pb=16; if(!hist||hist.length<1) return '';
+  const X=i=>pl+(hist.length<2?0:i/(hist.length-1))*(W-pl-pr), Y=v=>pt+(1-(clamp(v,lo,hi)-lo)/(hi-lo))*(Hh-pt-pb);
+  const pts=hist.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  const last=hist.length-1;
+  return `<svg class="chart" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Sıcaklık geçmişi"><rect class="bd" x="${pl}" y="${Y(okHi)}" width="${W-pl-pr}" height="${Y(okLo)-Y(okHi)}"/>`+
+   [lo,okLo,okHi,hi].map(v=>`<line class="gl" x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${pl-4}" y="${Y(v)+3}" text-anchor="end">${v}</text>`).join('')+
+   `<polyline class="ln" points="${pts}"/><circle class="pt" cx="${X(last)}" cy="${Y(hist[last])}" r="3"/><text class="ax" x="${W-pr}" y="${Hh-3}" text-anchor="end">${xlab}</text><text class="ax" x="${pl}" y="${Hh-3}">°C</text></svg>`;
+}
+function climateCtl(S,pre,tmin,tmax,hint){
+  return slider(pre+'set','Oda hava sıcaklığı',S.set,tmin,tmax,0.5,'°C',v=>S.set=v,hint)+
+    slider(pre+'hum','Bağıl nem',S.hum,78,99,1,'%',v=>S.hum=v)+
+    slider(pre+'vent','Taze hava (havalandırma)',S.vent,0,3,1,'',v=>S.vent=v,null,v=>VENT[v]);
+}
+function bioCtl(){ const b=B.bio; let s='';
+  if(b.spots) s+=`<button data-act="clean" class="danger">Küf lekelerini temizle <small>${b.spots} leke · ${tl(1200*b.spots)}</small></button>`;
+  if(b.pests) s+=`<button data-act="trap" class="danger">Sinek tuzağı kur <small>${tl(1500)}</small></button>`;
+  return s?`<div class="btns">${s}</div>`:''; }
+function bioNote(){ const b=B.bio; if(!b.spots&&!b.pests&&b.contam<1) return '';
+  return `<div class="note ${b.spots||b.pests?'bad':'warn'}">${b.spots?`${b.spots} aktif yeşil küf lekesi yayılıyor. `:''}${b.pests?'Mantar sinekleri raflarda dolaşıyor. ':''}Toplam bulaşma %${fmt(b.contam,1)}.</div>`; }
+
+/* ---------- aşamalar ---------- */
+const STAGES={
+ karisim:{cap:()=>'Kompost sahası · karışım',
+  info:'Beyaz şapkalı mantar (Agaricus bisporus) kompostu buğday sapı, tavuk gübresi ve jipsten (alçı) hazırlanır. Başlangıçta azot %1,5–1,9, C/N oranı 20–28 ve nem %70–77 hedeflenir. Jips kompostun yağlanmasını önler, yapıyı gevşetir ve kalsiyum sağlar.',
+  panel(){ const m=B.mix,c=cap();
+   return `${speciesPick()}<div><h2>Kompost karışımı</h2><div class="sub">Hammaddeleri tartın ve suyu ayarlayın. Göstergeler yeşil bölgedeyse kompost iyi olur.</div></div>
+   <div class="sec">${slider('mxs','Buğday sapı',m.straw,2,10*c,0.5,'ton',v=>m.straw=v)}${slider('mxm','Tavuk gübresi',m.manure,1,8*c,0.5,'ton',v=>m.manure=v)}${slider('mxg','Jips (alçı)',m.gypsum,0,800*c,25,'kg',v=>m.gypsum=v)}${slider('mxw','Su',m.water,5,40*c,1,'m³',v=>m.water=v)}</div>
+   <div id="live"></div>`; },
+  live(){ const s=mixStats(B.mix), q=mixScore(s), cost=mixCost(B.mix);
+   return `<div class="sec"><div class="gauges">${gauge('Azot (kuru madde)',s.N,'%',0.5,3,1.5,1.9,2)}${gauge('C/N oranı',s.CN,'',10,45,20,28,1)}${gauge('Nem',s.moist,'%',50,90,70,77,1)}${gauge('Jips / kuru madde',s.gyp,'%',0,12,3,6,1)}</div>
+   ${prog('Karışım puanı',q*100)}
+   <div class="kv"><span>Toplam karışım</span><span>${fmt(s.total,1)} t</span><span>Tahmini kompost (Faz II sonrası)</span><span>${fmt(s.total*0.6,1)} t</span><span class="tot">Maliyet (işçilik dahil)</span><span class="tot">${tl(cost)}</span></div>
+   <div class="btns"><button class="pri" data-act="mix">Karıştır ve yığın kur</button></div></div>`; }},
+ faz1:{cap:()=>`Faz I · yığın · ${B.f1.day}. gün`,
+  info:'Faz I\'de yığındaki mikroorganizmalar sıcaklığı 70–80 °C\'ye çıkarır. İçerideki oksijen hızla tükenir; yığını 2–3 günde bir aktararak havalandırın. Oksijensiz kalan bölgeler kötü kokulu, verimsiz kompost üretir. Bu aşama yaklaşık 10–14 gün sürer.',
+  panel(){ const f=B.f1, end=f.day>=18;
+   return `<div><h2>Faz I · Kompost yığını</h2><div class="sub">${f.day}. gün · ${f.turns} aktarma. Her işlem bir gün sürer.</div></div>
+   <div class="gauges">${gauge('Yığın iç sıcaklığı',f.temp,'°C',20,90,68,80,1)}${gauge('İçerideki oksijen',f.o2,'%',0,21,4,21,1)}${gauge('Nem',f.moist,'%',55,90,70,78,1)}<div class="g">${prog('Olgunlaşma',f.prog)}</div></div>
+   <div class="sec"><span class="sec-t">Sıcaklık geçmişi</span>${chart(f.hist,20,90,68,80,f.day+'. gün')}</div>
+   <div class="btns"><button data-act="f1:aktar" class="pri" ${end?'disabled':''}>Aktar (çevir) <small>${tl(1800)}</small></button><button data-act="f1:sula" ${end?'disabled':''}>Su ver <small>${tl(400)}</small></button><button data-act="f1:bekle" ${end?'disabled':''}>Bekle</button></div>
+   ${f.prog>=80?`<div class="btns"><button class="pri" data-act="f1done">Tünele taşı (Faz II) <small>${tl(3500)}</small></button></div>`:`<div class="note">Kompost %80 olgunlaşınca tünele taşıyabilirsiniz.</div>`}
+   ${f.prog>=80&&f.prog<100?'<div class="note warn">Kompost tam olgunlaşmadı. Şimdi taşırsanız kalite düşer.</div>':''}`; }},
+ faz2:{cap:()=>`Faz II · tünel · ${Math.floor(B.f2.hour/24)}. gün ${B.f2.hour%24}:00`,
+  info:'Faz II kapalı tünelde yapılır. Önce kompost 58–60 °C\'de en az 8 saat tutularak zararlılar ve rakip mikroorganizmalar öldürülür (pastörizasyon). 63 °C\'nin üzeri faydalı mikropları da öldürür. Ardından 45–48 °C\'de taze hava verilerek amonyak 10 ppm\'in altına indirilir (koşullandırma). Amonyak misel için zehirlidir.',
+  panel(){ const f=B.f2, end=f.hour>=14*24, past=f.pastH>=8;
+   const tlo=past?45:57, thi=past?48:60;
+   return `<div><h2>Faz II · Pastörizasyon tüneli</h2><div class="sub">${Math.floor(f.hour/24)} gün ${f.hour%24} saat geçti. ${past?'Pastörizasyon tamam, şimdi koşullandırma.':'Önce pastörizasyon: 58–60 °C, 8 saat.'}</div></div>
+   <div class="sec">${slider('f2s','Üflenen hava sıcaklığı',f.set,35,68,1,'°C',v=>f.set=v)}${slider('f2f','Taze hava oranı',f.fresh,0,100,5,'%',v=>f.fresh=v,'Taze hava amonyağı uzaklaştırır ama ısıtma maliyetini artırır.')}</div>
+   <div class="gauges">${gauge('Kompost sıcaklığı',f.temp,'°C',35,70,tlo,thi,1)}${gauge('Amonyak',f.nh3,'ppm',0,Math.max(100,f.nh30),0,10,0)}<div class="g">${prog('Pastörizasyon (57–63 °C)',Math.min(100,f.pastH/8*100),fmt(Math.min(f.pastH,8))+' / 8 saat')}</div><div class="g">${prog('Koşullandırma',clamp((f.nh30-f.nh3)/(f.nh30-10)*100,0,100))}</div></div>
+   <div class="sec"><span class="sec-t">Kompost sıcaklığı (4 saatlik adımlar)</span>${chart(f.hist.slice(-60),35,70,tlo,thi,'şimdi')}</div>
+   <div class="btns"><button data-act="f2:1" ${end?'disabled':''}>4 saat ilerlet</button><button data-act="f2:6" ${end?'disabled':''}>1 gün ilerlet</button></div>
+   <div class="btns"><button class="pri" data-act="f2done">Tüneli boşalt, soğut <small>${tl(2500)}</small></button></div>
+   ${!past?'<div class="note warn">Pastörizasyon yapılmadan boşaltılırsa küf ve sinek riski çok artar.</div>':f.nh3>10?'<div class="note warn">Amonyak 10 ppm\'in üzerinde. Bu kompost miseli yakar.</div>':'<div class="note ok">Kompost ekime hazır.</div>'}`; }},
+ ekim:{cap:()=>'Ekim salonu · misel karıştırma',
+  info:'Misel (tohumluk), steril tahıl taneleri üzerinde üretilmiş mantar ipliğidir. Kompost ağırlığının %0,5–1\'i kadar misel karıştırılır. Daha çok misel kolonizasyonu hızlandırır ama maliyeti artırır. Bu aşamada hijyen, ilerideki küf ve sinek sorunlarının çoğunu önler.',
+  panel(){ const e=B.ekim,c=B.comp;
+   return `<div><h2>Misel ekimi</h2><div class="sub">${fmt(c.t,1)} t kompost · kalite %${fmt(c.q*100)} · amonyak ${c.nh3} ppm · ${c.past?'pastörize':'pastörize edilmedi'}</div></div>
+   <div class="sec"><span class="sec-t">Misel hattı</span><div class="choices">${STRAINS.map((s,i)=>`<label class="choice ${e.strain===i?'on':''}"><input type="radio" name="strain" value="${i}" ${e.strain===i?'checked':''} data-bind="strain"><div><b>${s.name}</b><span>${s.d}</span></div><span class="pr">${s.price} ₺/kg</span></label>`).join('')}</div></div>
+   <div class="sec">${slider('ekr','Misel oranı (kompost ağırlığına göre)',e.rate,0.2,1.5,0.1,'%',v=>e.rate=v,'Önerilen: %0,5–1.')}</div>
+   <div class="sec"><span class="sec-t">Hijyen önlemleri</span><div class="choices">
+    ${[['dez','Ekipman ve oda dezenfeksiyonu',5000,'Küf riskini belirgin azaltır.'],['onluk','Önlük, eldiven, ayak dezenfeksiyonu',2000,'Personel kaynaklı bulaşmayı azaltır.'],['filtre','Sinek ağı ve hava filtresi',8000,'Sinek riskini yarıya indirir, küfü de azaltır.']].map(([k,n,p,d])=>`<label class="choice ${e[k]?'on':''}"><input type="checkbox" data-bind="${k}" ${e[k]?'checked':''}><div><b>${n}</b><span>${d}</span></div><span class="pr">${tl(p)}</span></label>`).join('')}
+   </div></div><div id="live"></div>`; },
+  live(){ const e=B.ekim,c=B.comp,st=STRAINS[e.strain]; const kg=c.t*1000*e.rate/100;
+   const hyg=(e.dez?5000:0)+(e.onluk?2000:0)+(e.filtre?8000:0);
+   return `<div class="kv"><span>Misel miktarı</span><span>${fmt(kg)} kg</span><span>Misel bedeli</span><span>${tl(kg*st.price)}</span><span>Hijyen</span><span>${tl(hyg)}</span><span class="tot">Toplam</span><span class="tot">${tl(kg*st.price+hyg)}</span></div>
+   ${c.nh3>10?`<div class="note bad">Kompostta ${c.nh3} ppm amonyak var. Misel kısmen ölecek.</div>`:''}
+   <div class="btns"><button class="pri" data-act="ekim">Miseli ek ve kuluçkaya al</button></div>`; }},
+ kulucka:{cap:()=>`Kuluçka odası · ${B.kul.day}. gün`,
+  info:'Kuluçkada (spawn run) misel 14–18 günde kompostu sarar. Kompost sıcaklığı 24–27 °C, nem %90–95 olmalıdır. Misel çoğaldıkça ısı üretir; kompost 30 °C\'yi geçerse misel ölmeye başlar. Bu yüzden oda sıcaklığını düşürün veya havalandırın. Bu evrede yüksek CO₂ zararsızdır, hatta gelişimi destekler.',
+  panel(){ const S=B.kul, done=S.col>=100;
+   return `<div><h2>Kuluçka odası</h2><div class="sub">${S.day}. gün · misel kompostu sarıyor. Misel ısındıkça odayı serinletin.</div></div>
+   <div class="sec">${climateCtl(S,'ku',16,30,'Kompost, oda havasından birkaç derece sıcaktır.')}</div>
+   <div class="gauges">${gauge('Kompost sıcaklığı',S.ctemp,'°C',16,34,24,27,1)}${gauge('Oda CO₂',S.co2,'ppm',0,10000,4000,10000)}<div class="g">${prog('Kolonizasyon',S.col)}</div>${gauge('Bulaşma (küf/sinek)',B.bio.contam,'%',0,30,0,2,1)}</div>
+   ${bioNote()}${bioCtl()}
+   <div class="sec"><span class="sec-t">Kompost sıcaklığı</span>${chart(S.hist,16,34,24,27,S.day+'. gün')}</div>
+   ${done||S.day>=28?`<div class="btns"><button class="pri" data-act="kuldone">Örtü toprağına geç</button></div>`:`<div class="btns"><button class="pri" data-act="grow:1">1 gün ilerlet</button><button data-act="grow:3">3 gün ilerlet</button></div>`}`; }},
+ ortu:{cap:()=>'Üretim odası · örtü toprağı',
+  info:'Örtü toprağı (casing) olmadan beyaz şapkalı mantar meyve vermez. Torf ve kireç karışımı 4–5 cm kalınlıkta serilir, pH 7,2–7,9 olmalıdır. Örtü toprağı nemi tutar ve mantar oluşumunu tetikleyen bakterilere ortam sağlar.',
+  panel(){ const o=B.ortu;
+   return `<div><h2>Üretim odası · Örtü toprağı</h2><div class="sub">Raflar üretim odasına taşındı. Kompostun üstüne örtü toprağı serin.</div></div>
+   <div class="sec"><span class="sec-t">Örtü malzemesi</span><div class="choices">${CASINGS.map((c,i)=>`<label class="choice ${o.type===i?'on':''}"><input type="radio" name="cas" value="${i}" ${o.type===i?'checked':''} data-bind="cas"><div><b>${c.name}</b><span>${c.d}</span></div><span class="pr">${fmt(c.price)} ₺/m³</span></label>`).join('')}</div></div>
+   <div class="sec">${slider('orp','pH (kireç ile ayarlanır)',o.ph,5.5,9,0.1,'',v=>o.ph=v)}${slider('ort','Kalınlık',o.thick,2,7.5,0.5,'cm',v=>o.thick=v)}${slider('orw','Örtü nemi',o.wet,0,2,1,'',v=>o.wet=v,null,v=>WET[v])}</div>
+   <div id="live"></div>`; },
+  live(){ const c=ortuCalc();
+   return `<div class="sec">${prog('Örtü kalitesi',Math.min(100,c.q*100))}<div class="kv"><span>Raf alanı</span><span>${fmt(c.area)} m²</span><span>Örtü hacmi</span><span>${fmt(c.vol,1)} m³</span><span class="tot">Maliyet (işçilik dahil)</span><span class="tot">${tl(c.cost)}</span></div>
+   <div class="btns"><button class="pri" data-act="ortu">Örtü toprağını ser</button></div></div>`; }},
+ caserun:{cap:()=>`Üretim odası · örtü altı gelişme · ${B.cr.day}. gün`,
+  info:'Misel 6–9 günde örtü toprağının içine doğru yürür. Bu sırada kompost 23–26 °C ve nem %92\'nin üzerinde tutulur. Yaklaşık yarı yolda örtüyü karıştırmak (ruffling) misel dağılımını eşitler; iğne başları daha düzenli çıkar.',
+  panel(){ const S=B.cr, done=S.col>=100;
+   return `<div><h2>Örtü altı gelişme</h2><div class="sub">${S.day}. gün · misel örtü toprağına yürüyor.</div></div>
+   <div class="sec">${climateCtl(S,'cr',16,30)}</div>
+   <div class="gauges">${gauge('Kompost sıcaklığı',S.ctemp,'°C',16,34,23,26,1)}${gauge('Bağıl nem',S.hum,'%',78,99,92,96)}<div class="g">${prog('Misel örtüde',S.col)}</div>${gauge('Bulaşma',B.bio.contam,'%',0,30,0,2,1)}</div>
+   ${bioNote()}${bioCtl()}
+   ${!B.ruffled&&S.col>=25&&S.col<=75?`<div class="btns"><button data-act="ruffle">Örtüyü karıştır (ruffling) <small>${tl(2500)}</small></button></div>`:''}
+   ${B.ruffled?'<div class="note ok">Örtü karıştırıldı.</div>':S.col<25?'<div class="note">Misel örtünün %25–75\'ine ulaşınca örtüyü karıştırabilirsiniz.</div>':''}
+   ${done||S.day>=14?`<div class="btns"><button class="pri" data-act="crdone">Şoklamaya geç</button></div>`:`<div class="btns"><button class="pri" data-act="grow:1">1 gün ilerlet</button><button data-act="grow:3">3 gün ilerlet</button></div>`}`; }},
+ sok:{cap:()=>`Üretim odası · şoklama · ${B.sok.day}. gün`,
+  info:'Mantar oluşumu için oda "şoklanır": hava sıcaklığı 16–18 °C\'ye düşürülür, bol taze hava ile CO₂ 1000 ppm\'in altına indirilir, nem %85–92 tutulur. 2–4 gün içinde iğne başları (primordia) oluşur. CO₂ yüksek kalırsa az sayıda, uzun saplı mantar çıkar.',
+  panel(){ const S=B.sok, done=S.pins>=100; const humEff=S.hum-S.vent*1.2;
+   return `<div><h2>Şoklama · iğne başı oluşumu</h2><div class="sub">${S.day}. gün · havayı soğutun, taze hava verin.</div></div>
+   <div class="sec">${climateCtl(S,'so',12,26,'Kompost sıcaklığı hava sıcaklığını gecikmeyle izler.')}</div>
+   <div class="gauges">${gauge('Kompost/örtü sıcaklığı',S.ctemp,'°C',10,30,16,19,1)}${gauge('Oda CO₂',ventCO2(S.vent),'ppm',0,5000,0,1000)}${gauge('Örtü yüzeyinde nem',humEff,'%',75,99,85,93,1)}<div class="g">${prog('İğne başları',S.pins)}</div></div>
+   ${bioNote()}${bioCtl()}
+   <div class="sec"><span class="sec-t">Kompost sıcaklığı</span>${chart(S.hist,10,30,16,19,S.day+'. gün')}</div>
+   ${done||S.day>=12?`<div class="btns"><button class="pri" data-act="sokdone">Hasada başla</button></div>`:`<div class="btns"><button class="pri" data-act="sok:1">1 gün ilerlet</button></div>`}
+   ${S.day>=12&&!done?'<div class="note bad">İğne başları tam oluşmadı. Hasat zayıf olacak.</div>':''}`; }},
+ hasat:{cap:()=>{const h=B.h; return h.phase==='running'?`Hasat · ${h.flush+1}. flaş · toplamak için ${isO()?'kümeye':'mantara'} dokunun`:`Hasat · ${Math.min(h.flush+1,3)}. flaş`;},
+  info:()=>isO()?'İstiridye mantarı küme halinde, bıçakla dibinden kesilerek toplanır. En iyi zaman, şapka kenarları hâlâ hafifçe aşağı kıvrıkken, düzleşmeden öncedir. Kenarlar yukarı kalkıp dalgalanınca mantar spor saçmaya başlar (beyaz toz). Bu hem değeri düşürür hem de çalışanlarda alerji yapar. Flaşlar arasında torbalar dinlendirilir ve nemlendirilir; bazı üreticiler torbaları suya batırır.'
+    :'Mantarlar şapka zarı (veil) kapalıyken toplanırsa birinci sınıf (A) satılır. Zar yırtılmaya başlayınca B, şapka açılınca C sınıfına düşer. Sıcaklık yükselirse mantarlar hızla açılır; nem %93\'ün üzerindeyse bakteriyel leke görülür. Hasat 7–10 gün arayla gelen 3 flaş (dalga) halinde yapılır.',
+  panel(){ const h=B.h, O=isO(); const tot=h.kg.A+h.kg.B+h.kg.C;
+   const legend=O?`<div class="legend"><span><i style="background:#9AA1A8"></i>İğne başı (erken)</span><span><i style="background:#7E8791;box-shadow:inset 0 0 0 2px #8BE0A6"></i>Kenarlar kıvrık · A</span><span><i style="background:#A9AFB5;box-shadow:inset 0 0 0 2px #C9A57A"></i>Düzleşmiş · B</span><span><i style="background:#D8D4CB;box-shadow:inset 0 0 0 3px #EFEDE7"></i>Kenar kalkık, spor tozu · C</span></div>`
+     :`<div class="legend"><span><i style="background:#F4F1EA"></i>Küçük (erken)</span><span><i style="background:#FFFFFF;box-shadow:inset 0 0 0 2px #8BE0A6"></i>Kapalı şapka · A</span><span><i style="background:#EFE6D6;box-shadow:inset 0 0 0 2px #C9A57A"></i>Zar açılıyor · B</span><span><i style="background:#E2D5BF;box-shadow:inset 0 0 0 3px #7A5A3D"></i>Açık şapka · C</span></div>`;
+   let body='';
+   if(h.phase==='ready') body=O?`<div class="note">Kümeler torba kesiklerinden çıkacak. Şapka kenarları aşağı kıvrıkken toplayın. Düzleşince B, kenarları kalkıp spor saçınca C olur; çok beklerse bozulur.</div>${legend}<div class="btns"><button class="pri" data-act="flush">1. flaşı başlat</button></div>`
+     :`<div class="note">Mantarlar örtü toprağından çıkacak. Şapka kapalıyken (beyaz, yuvarlak) toplayın. Bekletirseniz açılır ve değeri düşer; çok bekletirseniz çürür.</div>${legend}<div class="btns"><button class="pri" data-act="flush">1. flaşı başlat</button></div>`;
+   if(h.phase==='running') body=`${legend}<div id="live"></div>`;
+   if(h.phase==='between') body=`<div class="note ok">${h.flush}. flaş bitti: ${fmt(h.last.A+h.last.B+h.last.C)} kg toplandı, ${fmt(h.last.lost)} kg kayıp.</div>`+(O?
+     `<div class="sec"><span class="sec-t">Flaşlar arası torba bakımı</span><div class="btns"><button data-act="water:0">Kuru dinlendir</button><button data-act="water:1">Püskürterek nemlendir <small>${tl(800)}</small></button><button class="pri" data-act="water:2">Suya batır <small>${tl(1500)}</small></button></div><small style="color:var(--muted)">Kuru dinlenen torba bir sonraki flaşta daha az verir. Suya batırmak verimi artırır ama nemi yükseltir; havalandırmayı ihmal etmeyin.</small></div>`
+     :`<div class="sec"><span class="sec-t">Flaşlar arası sulama</span><div class="btns"><button data-act="water:0">Az sula <small>6 L/m²</small></button><button class="pri" data-act="water:1">Orta sula <small>10 L/m²</small></button><button data-act="water:2">Bol sula <small>16 L/m²</small></button></div><small style="color:var(--muted)">Az sulama sonraki flaşı küçültür, bol sulama bakteriyel leke riskini artırır.</small></div>`);
+   if(h.phase==='done') body=`<div class="note ok">Üç flaş tamamlandı. Toplam ${fmt(tot)} kg mantar kasalarda.</div><div class="btns"><button class="pri" data-act="sell">Ürünü sat ve raporu gör</button></div>`;
+   const st=curStrain();
+   const ctl=O?slider('hs','Oda sıcaklığı',h.set,8,30,0.5,'°C',v=>h.set=v,`${st.name.split(' (')[0]} için ${st.fr[0]}–${st.fr[1]} °C. Sıcakta kümeler hızla açılır.`)+slider('hh','Bağıl nem',h.hum,70,99,1,'%',v=>h.hum=v)+slider('hv','Taze hava',h.vent,0,3,1,'',v=>h.vent=v,'CO₂ 1000 ppm\'i geçerse saplar uzar, şapkalar küçük kalır.',v=>VENT[v])+slider('hl','Işık',h.light,0,16,1,'saat/gün',v=>h.light=v,'6 saatten az ışıkta mantarlar soluk ve uzun saplı olur.')
+     :slider('hs','Oda sıcaklığı',h.set,13,24,0.5,'°C',v=>h.set=v,'16–18 °C\'de mantarlar yavaş ve düzgün büyür.')+slider('hh','Bağıl nem',h.hum,78,98,1,'%',v=>h.hum=v)+slider('hv','Taze hava',h.vent,0,3,1,'',v=>h.vent=v,'CO₂ 1100 ppm\'i geçerse saplar uzar (A sınıfı kaybolur).',v=>VENT[v]);
+   return `<div><h2>Hasat</h2><div class="sub">Beklenen toplam ürün yaklaşık ${fmt(h.totalKg)} kg (${O?`kuru substrata göre %${fmt(h.BE*100)} biyolojik verim`:`${fmt(h.BE*100,1)} kg / 100 kg kompost`}).</div></div>
+   <div class="sec">${ctl}</div>
+   ${body}
+   <div class="kv"><span>Toplanan A sınıfı</span><span>${fmt(h.kg.A)} kg</span><span>Toplanan B sınıfı</span><span>${fmt(h.kg.B)} kg</span><span>Toplanan C sınıfı</span><span>${fmt(h.kg.C)} kg</span><span>${O?'Bozulan':'Çürüyen'}</span><span>${fmt(h.lost)} kg</span></div>`; },
+  live(){ if(!H) return ''; const a=H.acc, O=isO(); const c=hClimate();
+   const left=H.sp.filter(s=>!s.pk&&!s.dead).length;
+   return `<div class="gauges">${gauge('Oda CO₂',c.co2,'ppm',0,5000,0,O?1000:1100)}${O?gauge('Nem (yüzeyde)',c.humEff,'%',65,99,82,95,1):gauge('Şapka yüzeyinde nem',c.humEff,'%',75,99,84,93,1)}</div>
+   <div class="kv"><span>Bu flaş: A</span><span>${fmt(a.A,1)} kg</span><span>Bu flaş: B</span><span>${fmt(a.B,1)} kg</span><span>Bu flaş: C</span><span>${fmt(a.C,1)} kg</span><span>Bu flaş: kayıp</span><span>${fmt(a.lost,1)} kg</span><span class="tot">${O?'Torbalardaki küme':'Raftaki mantar'}</span><span class="tot">${left}</span></div>`; }},
+ rapor:{cap:()=>`${G.batchNo}. parti · satış`,
+  info:()=>isO()?'İstiridye mantarında biyolojik verim, kuru substrat ağırlığına göre taze mantar yüzdesidir. %75–100 iyi kabul edilir. Beyaz şapkalı mantarın kompost bazlı verimiyle doğrudan karşılaştırılamaz.'
+    :'Biyolojik verim, 100 kg kompost başına hasat edilen mantar miktarıdır. İyi işletmelerde 25–35 kg/100 kg arasındadır. Kârı artırmanın yolu hem verimi hem de A sınıfı oranını yükseltmektir.',
+  panel(){ const r=B.rep,h=B.h,O=isO(); const stars=O?(r.BE>=85?3:r.BE>=65?2:r.BE>=45?1:0):(r.BE>=27?3:r.BE>=21?2:r.BE>=14?1:0);
+   const tips=tipList(), P=O?PRICE_O:PRICE;
+   const costs=Object.entries(B.costs).sort((a,b)=>b[1]-a[1]);
+   return `<div><h2>${G.batchNo}. parti raporu</h2><div class="sub">${curStrain().name} · ${O?`${fmt(B.comp.t,2)} t kuru substrat, ${fmt(B.o.info.bags)} torba`:`${fmt(B.comp.t,1)} t kompost`}</div></div>
+   <div class="stars" aria-label="${stars} yıldız">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</div>
+   <div class="gauges">${O?gauge('Biyolojik verim',r.BE,'%',0,130,75,100,1):gauge('Biyolojik verim',r.BE,'kg/100 kg',0,40,25,35,1)}${gauge('A sınıfı oranı',r.total?h.kg.A/r.total*100:0,'%',0,100,60,100)}</div>
+   <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Sınıf</th><th>kg</th><th>₺/kg</th><th>Gelir</th></tr></thead><tbody>
+    ${['A','B','C'].map(c=>`<tr><td>${c} sınıfı</td><td>${fmt(h.kg[c])}</td><td>${fmt(P[c]*r.mult,0)}</td><td>${tl(r.rev[c])}</td></tr>`).join('')}
+    <tr><td><b>Toplam</b></td><td>${fmt(r.total)}</td><td></td><td><b>${tl(r.revenue)}</b></td></tr></tbody></table></div>
+   <div class="kv">${costs.map(([k,v])=>`<span>${k}</span><span>−${tl(v)}</span>`).join('')}<span class="tot">Parti kârı</span><span class="tot" style="color:var(${r.profit>=0?'--ok':'--bad'})">${tl(r.profit)}</span></div>
+   <div class="sec"><span class="sec-t">Neler daha iyi olabilirdi?</span>${tips.map(t=>`<div class="note ${t[1]}">${t[0]}</div>`).join('')}</div>
+   <div class="sec"><span class="sec-t">Çiftliğe yatırım</span><div class="shop">${UPG.map(u=>`<div class="it"><div><b>${u.name}</b><span>${u.d}</span></div>${G.up[u.id]?'<b style="color:var(--ok)">Kuruldu</b>':`<button data-act="buy:${u.id}" ${G.money<u.price?'disabled':''}>${tl(u.price)}</button>`}</div>`).join('')}</div></div>
+   <div class="sec"><span class="sec-t">Sonraki partide ne yetiştirilsin?</span>${speciesPick('next')}</div>
+   <div class="btns"><button class="pri" data-act="next">${G.batchNo+1}. partiyi başlat</button></div>`; }},
+};
+function tipList(){ const n=B.notes,t=[];
+  if(n.mix) t.push(['Karışım oranları hedef dışındaydı. Azot %1,5–1,9, C/N 20–28, nem %70–77, jips %3–6 olmalı.','warn']);
+  if(n.anaer) t.push([`Faz I'de yığın ${n.anaer} gün oksijensiz kaldı. 2–3 günde bir aktarın.`,'warn']);
+  if(n.f1short) t.push(['Kompost tam olgunlaşmadan tünele taşındı.','warn']);
+  if(n.past) t.push(['Pastörizasyon tamamlanmadı. Küf ve sinek riski arttı.','bad']);
+  if(n.over) t.push(['Tünelde kompost 63 °C\'yi aştı, faydalı mikroorganizmalar zarar gördü.','warn']);
+  if(n.nh3) t.push([`Ekimde kompostta ${n.nh3} ppm amonyak vardı. 10 ppm altına inmeden ekmeyin.`,'bad']);
+  if(n.heat) t.push(['Kuluçkada kompost 30 °C\'yi aştı ve misel zarar gördü. Misel ısındıkça oda sıcaklığını düşürün.','bad']);
+  if(n.contam) t.push([`Küf ve sinek bulaşması %${n.contam} seviyesine çıktı. Lekeleri hemen temizleyin, hijyene yatırım yapın.`,'warn']);
+  if(n.pest) t.push(['Sinekler uzun süre raflarda kaldı. Tuzakları erken kurun.','warn']);
+  if(n.casing) t.push(['Örtü toprağı ideal değildi: pH 7,2–7,9, kalınlık 4–5 cm, nem ideal olmalı.','warn']);
+  if(n.pin) t.push(['Şoklama koşulları tam sağlanamadı (16–19 °C, CO₂ < 1000 ppm, nem %85–93).','warn']);
+  if(n.omix) t.push(['Substrat oranları hedef dışındaydı: nem %60–66, kepek %15–22, pH 6,5–7,5, azot %0,5–0,9.','warn']);
+  if(n.ocam) t.push(['Çam talaşı reçine içerir; misel yavaş gelişti ve verim düştü. Kavak veya kayın talaşı kullanın.','warn']);
+  if(n.oster) t.push(['Sterilizasyon/pastörizasyon yetersiz kaldı; torbalarda küf riski arttı.','bad']);
+  if(n.obranpas) t.push(['Kepek oranı yüksekken yalnızca pastörizasyon yapıldı. Kepekli karışımı otoklavda sterilize edin.','warn']);
+  if(n.oover) t.push(['Torbalar otoklavda gereğinden uzun kaldı; kepek karamelize oldu.','warn']);
+  if(n.okill) t.push([`Torbalar sıcakken (${n.okill} °C) aşılandı ve misel zarar gördü. 30 °C'nin altına soğumasını bekleyin.`,'bad']);
+  if(n.oheat) t.push(['Kuluçkada torba içi 30 °C\'yi aştı. Torbalar kendi ısısını üretir; odayı serin tutun.','bad']);
+  if(n.ocontam) t.push([`Torbaların %${n.ocontam} kadarı yeşil küf nedeniyle kaybedildi. Bulaşık torbaları görür görmez ayıklayın.`,'warn']);
+  if(n.oearly) t.push(['Kuluçkada ışık açıktı; torbaların içinde erken iğne başları oluştu.','warn']);
+  if(n.opin) t.push(['Meyve koşulları tam sağlanamadı: günde 8–12 saat ışık, CO₂ < 1000 ppm, nem %85–95, türe uygun sıcaklık.','warn']);
+  if(n.late) t.push([isO()?'Kümelerin yarısından fazlası şapka kenarları düzleştikten sonra toplandı. Daha erken toplayın.':'Mantarların yarısından fazlası zar açıldıktan sonra toplandı. Daha erken toplayın.','warn']);
+  if(n.lost) t.push([`${n.lost} kg mantar toplanmadan çürüdü.`,'bad']);
+  if(!t.length) t.push(['Kusursuz bir parti! Tüm aşamalar hedef değerlerde yürüdü.','ok']);
+  return t; }
+
+/* ---------- çizim ---------- */
+const scene=$('#scene'), ctx=scene.getContext('2d');
+let SW=0,SH=0,DPR=1;
+function fitScene(){ const w=scene.parentElement.clientWidth||600;
+  const h=B.stage==='hasat'?Math.round(clamp(w*0.78,300,460)):Math.round(clamp(w*0.5,200,300));
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  if(w!==SW||h!==SH){ SW=w; SH=h; scene.width=w*DPR; scene.height=h*DPR; scene.style.height=h+'px'; } }
+const steam=[];
+function bgBarn(){ const g=ctx.createLinearGradient(0,0,0,SH); g.addColorStop(0,'#2B2420'); g.addColorStop(1,'#3A302A'); ctx.fillStyle=g; ctx.fillRect(0,0,SW,SH); }
+function lerpC(a,b,t){ const pa=a.match(/\w\w/g).map(x=>parseInt(x,16)),pb=b.match(/\w\w/g).map(x=>parseInt(x,16)); return 'rgb('+pa.map((v,i)=>Math.round(v+(pb[i]-v)*t)).join(',')+')'; }
+function txt(s,x,y,c='#EFE6DA',sz=11,al='left'){ ctx.fillStyle=c; ctx.font=`600 ${sz}px "JetBrains Mono", monospace`; ctx.textAlign=al; ctx.fillText(s,x,y); }
+function drawSteam(x0,x1,y,intensity,t){
+  if(Math.random()<intensity) steam.push({x:x0+Math.random()*(x1-x0),y,vx:(Math.random()-.5)*8,vy:-14-Math.random()*16,life:0,max:2+Math.random()*2});
+  for(let i=steam.length-1;i>=0;i--){ const p=steam[i]; p.life+=1/60; p.x+=p.vx/60+Math.sin(t*2+i)*0.15; p.y+=p.vy/60;
+    if(p.life>p.max){steam.splice(i,1);continue;}
+    const a=0.22*(1-p.life/p.max); ctx.fillStyle=`rgba(235,230,222,${a})`; ctx.beginPath(); ctx.arc(p.x,p.y,6+p.life*9,0,7); ctx.fill(); }
+  if(steam.length>160) steam.splice(0,steam.length-160);
+}
+function drawKarisim(t){ bgBarn(); const m=B.mix,c=cap(); const gy=SH*0.82;
+  ctx.fillStyle='#4A3F36'; ctx.fillRect(0,gy,SW,SH-gy);
+  const pile=(cx,w,hh,col,col2,label,val)=>{ ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(cx-w/2,gy); ctx.quadraticCurveTo(cx-w*0.25,gy-hh*1.05,cx,gy-hh); ctx.quadraticCurveTo(cx+w*0.25,gy-hh*1.05,cx+w/2,gy); ctx.fill();
+    const r=mulberry32(label.length*99); ctx.strokeStyle=col2; ctx.lineWidth=1.2; for(let i=0;i<w*hh/60;i++){ const x=cx-w/2+r()*w, y=gy-r()*hh*0.9*(1-Math.abs(x-cx)/(w/2)); ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+(r()-.5)*10,y+(r()-.5)*4); ctx.stroke(); }
+    txt(label,cx,gy+16,'#EFE6DA',11,'center'); txt(val,cx,gy+30,'#C9BBA8',10,'center'); };
+  const cw=SW/4;
+  pile(cw*0.5,cw*0.9,18+m.straw/(10*c)*SH*0.5,'#C9A24A','#E3C774','Buğday sapı',fmt(m.straw,1)+' t');
+  pile(cw*1.5,cw*0.8,14+m.manure/(8*c)*SH*0.45,'#5E3F26','#7D5A3C','Tavuk gübresi',fmt(m.manure,1)+' t');
+  const bags=Math.round(m.gypsum/50); for(let i=0;i<bags;i++){ const col=i%4,row=Math.floor(i/4); const x=cw*2.5-34+col*17,y=gy-12-row*10; ctx.fillStyle='#E8E4DC'; ctx.fillRect(x,y,15,9); ctx.fillStyle='#BDB6AA'; ctx.fillRect(x,y+7,15,2); }
+  txt('Jips',cw*2.5,gy+16,'#EFE6DA',11,'center'); txt(fmt(m.gypsum)+' kg',cw*2.5,gy+30,'#C9BBA8',10,'center');
+  const tx=cw*3.5-26,tw=52,th=SH*0.55; ctx.fillStyle='#55606A'; ctx.fillRect(tx,gy-th,tw,th); const fill=m.water/(40*c);
+  ctx.fillStyle='#5DA0C8'; ctx.fillRect(tx+3,gy-3-(th-6)*fill,tw-6,(th-6)*fill); ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(tx+3+(Math.sin(t*2)+1)*4,gy-3-(th-6)*fill,6,(th-6)*fill);
+  txt('Su',cw*3.5,gy+16,'#EFE6DA',11,'center'); txt(fmt(m.water)+' m³',cw*3.5,gy+30,'#C9BBA8',10,'center'); }
+function drawFaz1(t){ bgBarn(); const f=B.f1, gy=SH*0.84;
+  ctx.fillStyle='#4A3F36'; ctx.fillRect(0,gy,SW,SH-gy);
+  const x0=SW*0.06,x1=SW*0.86,top=SH*0.3; const col=lerpC('C9A24A','3E2819',clamp(f.prog/100,0,1));
+  ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(x0,gy); ctx.bezierCurveTo(x0+30,top,x1-30,top,x1,gy); ctx.fill();
+  const r=mulberry32(5); ctx.strokeStyle='rgba(255,230,170,.25)'; for(let i=0;i<180;i++){ const x=x0+20+r()*(x1-x0-40), y=top+30+r()*(gy-top-35); ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+(r()-.5)*12,y+(r()-.5)*5); ctx.stroke(); }
+  if(f.anaer){ ctx.fillStyle='rgba(30,20,15,.55)'; ctx.beginPath(); ctx.ellipse((x0+x1)/2,gy-(gy-top)*0.3,(x1-x0)*0.18,(gy-top)*0.16,0,0,7); ctx.fill(); }
+  drawSteam(x0+60,x1-60,top+28,clamp((f.temp-40)/35,0,1)*0.9,t);
+  const a=t-f.anim; if(a>=0&&a<1.6){ const mx=x0-60+(x1-x0+120)*(a/1.6); ctx.fillStyle='#D7A21E'; ctx.fillRect(mx-30,gy-46,60,34); ctx.fillStyle='#2A2A2A'; ctx.beginPath(); ctx.arc(mx-18,gy-8,9,0,7); ctx.arc(mx+18,gy-8,9,0,7); ctx.fill(); ctx.fillStyle='#8FB6C9'; ctx.fillRect(mx-6,gy-42,16,12); }
+  const tx=SW*0.93,tt=SH*0.18,tb=gy-16; ctx.fillStyle='#E9E4DC'; ctx.fillRect(tx-4,tt,8,tb-tt); ctx.beginPath(); ctx.arc(tx,tb,9,0,7); ctx.fill();
+  const fr=clamp((f.temp-20)/70,0,1); ctx.fillStyle='#D9462F'; ctx.fillRect(tx-2,tb-(tb-tt)*fr,4,(tb-tt)*fr); ctx.beginPath(); ctx.arc(tx,tb,6,0,7); ctx.fill();
+  txt(fmt(f.temp,0)+'°C',tx,tt-6,'#EFE6DA',11,'center');
+  txt(`O₂ %${fmt(f.o2,0)}`,x0,SH-8,'#C9BBA8',11); }
+function drawFaz2(t){ bgBarn(); const f=B.f2; const x0=SW*0.05,x1=SW*0.95,y0=SH*0.16,y1=SH*0.86;
+  ctx.fillStyle='#6E6A65'; ctx.beginPath(); ctx.moveTo(x0,y1); ctx.lineTo(x0,y0+30); ctx.quadraticCurveTo((x0+x1)/2,y0-30,x1,y0+30); ctx.lineTo(x1,y1); ctx.fill();
+  ctx.fillStyle='#2D2925'; ctx.beginPath(); ctx.moveTo(x0+12,y1-10); ctx.lineTo(x0+12,y0+38); ctx.quadraticCurveTo((x0+x1)/2,y0-14,x1-12,y0+38); ctx.lineTo(x1-12,y1-10); ctx.fill();
+  const by=y1-SH*0.32; const heat=clamp((f.temp-40)/26,0,1);
+  ctx.fillStyle=lerpC('4A301F','3B2416',heat); ctx.fillRect(x0+12,by,x1-x0-24,y1-10-by);
+  ctx.fillStyle=`rgba(${Math.round(80+175*heat)},${Math.round(120-40*heat)},${Math.round(200-170*heat)},.28)`; ctx.fillRect(x0+12,by,x1-x0-24,y1-10-by);
+  ctx.fillStyle='#8A847C'; for(let x=x0+22;x<x1-16;x+=18) ctx.fillRect(x,y1-10,8,4);
+  const sp=(f.fresh/100)*120+20; ctx.strokeStyle='rgba(150,200,230,.7)'; ctx.lineWidth=2;
+  for(let i=0;i<5;i++){ const yy=by-18-i*10; const off=((t*sp+i*47)%(x1-x0-60)); const ax=x0+20+off; ctx.beginPath(); ctx.moveTo(ax,yy); ctx.lineTo(ax+18,yy); ctx.lineTo(ax+13,yy-4); ctx.moveTo(ax+18,yy); ctx.lineTo(ax+13,yy+4); ctx.stroke(); }
+  const nb=Math.min(14,Math.round(f.nh3/25)); for(let i=0;i<nb;i++){ const x=x0+40+((i*97+t*20)%(x1-x0-80)), y=by-((t*25+i*31)%(by-y0-20)); txt('NH₃',x,y,'rgba(236,214,120,.75)',10,'center'); }
+  drawSteam(x0+40,x1-40,by,heat*0.5,t);
+  txt(`${fmt(f.temp,1)}°C · NH₃ ${fmt(f.nh3)} ppm`,(x0+x1)/2,y1+16,'#EFE6DA',11,'center'); }
+function drawEkim(t){ bgBarn(); const e=B.ekim, x0=SW*0.06,x1=SW*0.94, y0=SH*0.3,y1=SH*0.82;
+  ctx.fillStyle='#6C6660'; ctx.fillRect(x0-8,y0-8,x1-x0+16,y1-y0+16); ctx.fillStyle='#3F2919'; ctx.fillRect(x0,y0,x1-x0,y1-y0);
+  const r=mulberry32(77); const n=Math.round(e.rate*420); const st=STRAINS[e.strain];
+  for(let i=0;i<n;i++){ const x=x0+r()*(x1-x0),y=y0+r()*(y1-y0); ctx.fillStyle=st.brown?'#E6D3B8':'#F3EFE4'; ctx.beginPath(); ctx.ellipse(x,y,2.4,1.5,r()*3,0,7); ctx.fill(); }
+  const wob=Math.sin(t*3)*6; ctx.fillStyle='#9AA3AA'; ctx.fillRect(SW*0.5-5+wob,SH*0.05,10,y0-SH*0.05+10);
+  txt(`Misel %${fmt(e.rate,1)}`,x0,SH*0.2,'#EFE6DA',12); }
+const SHELF_R=mulberry32(2024); const PATCH=Array.from({length:90},()=>({x:SHELF_R(),y:SHELF_R(),r:0.5+SHELF_R()}));
+function drawShelves(t,o){ bgBarn(); const tiers=3, x0=SW*0.05,x1=SW*0.86; const th=(SH-30)/tiers;
+  for(let k=0;k<tiers;k++){ const y=18+k*th, bh=th*0.42, by=y+th-bh-12;
+    ctx.fillStyle='#8A949B'; ctx.fillRect(x0-6,y+th-12,x1-x0+12,4); ctx.fillRect(x0-6,y+6,4,th-14); ctx.fillRect(x1+2,y+6,4,th-14);
+    ctx.fillStyle='#3F2919'; ctx.fillRect(x0,by,x1-x0,bh);
+    ctx.save(); ctx.beginPath(); ctx.rect(x0,by,x1-x0,bh); ctx.clip();
+    const nShow=Math.floor((o.col/100)*PATCH.length);
+    for(let i=0;i<nShow;i++){ const p=PATCH[(i*7+k*13)%PATCH.length]; const px=x0+p.x*(x1-x0), py=by+p.y*bh; const rr=(8+p.r*16)*(0.6+0.4*o.col/100);
+      const g=ctx.createRadialGradient(px,py,0,px,py,rr); g.addColorStop(0,'rgba(246,243,234,.85)'); g.addColorStop(1,'rgba(246,243,234,0)'); ctx.fillStyle=g; ctx.fillRect(px-rr,py-rr,rr*2,rr*2); }
+    if(o.casing){ const ch=Math.max(4,o.casing*2.2); ctx.fillStyle='#584A3E'; ctx.fillRect(x0,by,x1-x0,ch);
+      if(o.ccol){ const r=mulberry32(k+9); for(let i=0;i<o.ccol*1.4;i++){ ctx.fillStyle='rgba(240,236,226,.7)'; ctx.fillRect(x0+r()*(x1-x0),by+r()*ch,3,1.5);} } }
+    if(o.pins){ const r=mulberry32(k*3+1); const n=Math.round(o.pins*0.6); for(let i=0;i<n;i++){ ctx.fillStyle='#F6F3EA'; ctx.beginPath(); ctx.arc(x0+6+r()*(x1-x0-12),by-1.5,1.4+r()*1.6*(o.pins/100),0,7); ctx.fill(); } }
+    ctx.restore();
+    const ms=B.bio.spots+Math.floor(B.bio.contam/8); const r2=mulberry32(k*11+5);
+    for(let i=0;i<ms;i++){ if(r2()>0.4) continue; const px=x0+r2()*(x1-x0), py=by+bh*0.2+r2()*bh*0.7; ctx.fillStyle='rgba(70,140,60,.85)'; ctx.beginPath(); ctx.arc(px,py,5+r2()*5,0,7); ctx.fill(); ctx.fillStyle='rgba(150,200,90,.7)'; ctx.beginPath(); ctx.arc(px,py,2.5,0,7); ctx.fill(); }
+  }
+  if(B.bio.pests){ ctx.fillStyle='#111'; for(let i=0;i<6+B.bio.pests*4;i++){ const x=x0+((i*83+Math.sin(t*3+i)*30+t*40)%(x1-x0)), y=20+((i*47+Math.cos(t*2.3+i)*20)%(SH-40)); ctx.fillRect(x,y,2.5,2.5);} }
+  const fx=SW*0.93, fy=SH*0.2, fr=Math.min(18,SW*0.03); ctx.save(); ctx.translate(fx,fy); ctx.rotate(t*o.vent*3); ctx.fillStyle='#B8C2C8'; for(let i=0;i<3;i++){ ctx.rotate(2.094); ctx.beginPath(); ctx.ellipse(fr*0.5,0,fr*0.5,fr*0.2,0,0,7); ctx.fill(); } ctx.restore();
+  txt(VENT[o.vent],fx,fy+fr+14,'#C9BBA8',10,'center');
+  txt(fmt(o.temp,1)+'°C',fx,SH*0.62,'#EFE6DA',12,'center'); txt('kompost',fx,SH*0.62+13,'#C9BBA8',9,'center');
+  if(o.co2) { txt(fmt(o.co2),fx,SH*0.84,'#EFE6DA',11,'center'); txt('ppm CO₂',fx,SH*0.84+12,'#C9BBA8',9,'center'); } }
+/* hasat yatağı */
+function bedPos(s){ return {x:12+s.x*(SW-24), y:12+s.y*(SH-24)}; }
+function mushR(s){ return (3+Math.min(s,1.2)*14)*Math.min(1.3,Math.max(0.8,SW/600)); }
+let BED=null;
+function drawBed(t){ if(isO()) return drawOBed(t); if(!BED||BED.w!==SW||BED.h!==SH||BED.sp!=='a'){ const c=document.createElement('canvas'); c.width=SW*DPR; c.height=SH*DPR; const b=c.getContext('2d'); b.scale(DPR,DPR);
+    b.fillStyle='#4C3E33'; b.fillRect(0,0,SW,SH); const r=mulberry32(3); for(let i=0;i<SW*SH/40;i++){ const v=r(); b.fillStyle=v<.5?'rgba(30,22,16,.35)':'rgba(120,100,82,.25)'; b.fillRect(r()*SW,r()*SH,1+r()*2.5,1+r()*2.5);}
+    for(let i=0;i<220;i++){ b.fillStyle='rgba(235,230,220,.18)'; b.fillRect(r()*SW,r()*SH,4,1); }
+    BED={w:SW,h:SH,c,sp:'a'}; }
+  ctx.drawImage(BED.c,0,0,SW,SH);
+  const h=B.h; if(!H){ txt(h.phase==='ready'?'Raf hazır. Flaşı başlatın.':h.phase==='between'?'Flaşlar arası dinlenme':'Hasat tamamlandı',SW/2,SH/2,'#EFE6DA',14,'center'); return; }
+  const brown=STRAINS[B.spawn.strain].brown;
+  const list=H.sp.filter(s=>!s.pk&&H.t>=s.born).sort((a,b)=>a.y-b.y);
+  for(const s of list){ const p=bedPos(s), r=mushR(s.s); drawMush(p.x,p.y,r,s,brown); }
+  for(let i=H.fl.length-1;i>=0;i--){ const f=H.fl[i], a=H.t-f.t; if(a>1.2){H.fl.splice(i,1);continue;} ctx.globalAlpha=1-a/1.2; txt(f.txt,f.x,f.y-14-a*26,f.c,12,'center'); ctx.globalAlpha=1; }
+  const tleft=Math.max(0,24-H.t); txt(`${h.flush+1}. flaş`+(tleft>0?` · yeni mantar çıkıyor ${Math.ceil(tleft)} sn`:''),SW-10,SH-10,'#EFE6DA',11,'right'); }
+function drawMush(x,y,r,s,brown){
+  if(s.dead){ ctx.fillStyle='#5B3F2A'; ctx.beginPath(); ctx.ellipse(x,y,r*1.05,r*0.85,0,0,7); ctx.fill(); ctx.fillStyle='#3A2518'; ctx.beginPath(); ctx.arc(x+r*.2,y,r*.4,0,7); ctx.fill(); return; }
+  ctx.fillStyle='rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(x+r*0.18,y+r*(s.ls?0.55:0.3),r*1.02,r*0.8,0,0,7); ctx.fill();
+  const v=s.s; let base=brown?[184,138,94]:[250,248,242];
+  if(v>=0.92){ base=brown?[160,118,80]:[226,213,191]; }
+  const c=`rgb(${base.join(',')})`, hi=brown?'rgb(214,180,140)':'#FFFFFF';
+  if(v>=0.92){ ctx.fillStyle='#6E4E34'; ctx.beginPath(); ctx.arc(x,y,r*1.08,0,7); ctx.fill(); }
+  const g=ctx.createRadialGradient(x-r*0.35,y-r*0.35,r*0.1,x,y,r); g.addColorStop(0,hi); g.addColorStop(1,c);
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,v>=0.92?r*0.94:r,0,7); ctx.fill();
+  if(v>=0.75&&v<0.92){ ctx.strokeStyle='rgba(150,115,80,.8)'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(x,y,r*0.9,0.3,5.6); ctx.stroke(); }
+  if(v>=0.92){ ctx.strokeStyle='rgba(110,78,52,.45)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,r*0.6,0,7); ctx.stroke(); }
+  if(s.bl){ ctx.fillStyle='rgba(140,90,40,.85)'; for(let i=0;i<4;i++){ ctx.beginPath(); ctx.arc(x+Math.cos(i*1.7)*r*0.45,y+Math.sin(i*2.3)*r*0.4,r*0.13+1,0,7); ctx.fill(); } }
+}
+function drawRapor(t){ if(isO()) return drawORapor(t); bgBarn(); const h=B.h; const tot=h.kg.A+h.kg.B+h.kg.C||1; const cw=SW/3;
+  ['A','B','C'].forEach((c,i)=>{ const cx=cw*(i+0.5), bw=Math.min(150,cw*0.78), by=SH*0.78, bh=SH*0.26;
+    const n=Math.round(h.kg[c]/tot*60); const r=mulberry32(i+40);
+    for(let j=0;j<n;j++){ const x=cx-bw/2+10+r()*(bw-20), y=by-6-r()*Math.min(bh*0.9,10+n*1.2); drawMush(x,y,7+r()*3,{s:c==='A'?0.6:c==='B'?0.85:1,bl:false,ls:false,dead:false},STRAINS[B.spawn.strain].brown); }
+    ctx.fillStyle='#8A5A32'; ctx.fillRect(cx-bw/2,by,bw,bh*0.55); ctx.fillStyle='#A8723F'; ctx.fillRect(cx-bw/2,by+6,bw,5); ctx.fillRect(cx-bw/2,by+bh*0.3,bw,5);
+    txt(`${c} sınıfı · ${fmt(h.kg[c])} kg`,cx,SH-10,'#EFE6DA',11,'center'); }); }
+function frame(now){ const t=now/1000; fitScene(); ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(B.stage==='hasat'&&H&&B.h.phase==='running'){ const dt=Math.min(0.05,(now-H.last)/1000); H.last=now; harvestUpdate(dt);
+    if(H){ liveTick+=dt; if(liveTick>0.35){ liveTick=0; const L=$('#live'); if(L) L.innerHTML=STAGES.hasat.live(); } } }
+  switch(B.stage){
+    case 'karisim': drawKarisim(t); break; case 'faz1': drawFaz1(t); break; case 'faz2': drawFaz2(t); break; case 'ekim': drawEkim(t); break;
+    case 'kulucka': drawShelves(t,{col:B.kul.col,temp:B.kul.ctemp,vent:B.kul.vent,co2:B.kul.co2}); break;
+    case 'ortu': drawShelves(t,{col:100,temp:B.kul.ctemp,vent:1,casing:B.ortu.thick}); break;
+    case 'caserun': drawShelves(t,{col:100,temp:B.cr.ctemp,vent:B.cr.vent,casing:B.ortu.thick,ccol:B.cr.col}); break;
+    case 'sok': drawShelves(t,{col:100,temp:B.sok.ctemp,vent:B.sok.vent,casing:B.ortu.thick,ccol:100,pins:B.sok.pins,co2:ventCO2(B.sok.vent)}); break;
+    case 'hasat': drawBed(t); break; case 'rapor': drawRapor(t); break;
+    case 'o_karisim': drawOKarisim(t); break; case 'o_steril': drawOSteril(t); break; case 'o_ekim': drawOEkim(t); break;
+    case 'o_kulucka': drawOBags(t,{col:B.o.kul.col,temp:B.o.kul.btemp,vent:B.o.kul.vent,light:B.o.kul.light,co2:B.o.kul.co2}); break;
+    case 'o_meyve': { const M=B.o.meyve; drawOBags(t,M?{col:100,temp:M.btemp,vent:M.vent,light:M.light,co2:M.co2,meyve:true,pins:M.pins}:{col:100,temp:B.o.kul.btemp,vent:1,light:6,meyve:true,pins:0}); break; } }
+  requestAnimationFrame(frame); }
+let liveTick=0;
+
+/* ===================== İSTİRİDYE MANTARI ===================== */
+const TALAS=[
+  {name:'Kavak talaşı',price:1400,q:1.0,colF:1.05,d:'En yaygın seçim. Misel hızlı sarar.'},
+  {name:'Kayın / meşe talaşı',price:1900,q:1.08,colF:0.92,d:'Sert ağaç. Daha verimli, misel biraz yavaş sarar.'},
+  {name:'Çam talaşı',price:800,q:0.68,colF:0.78,d:'Ucuz ama reçinesi misel gelişimini engeller.'},
+];
+const OSTR=[
+  {name:'Kış istiridyesi (P. ostreatus)',price:120,yield:1.0,pm:1,fr:[12,18],col:'grey',d:'Klasik gri istiridye. Meyve için serinlik ister: 12–18 °C.'},
+  {name:'Yaz istiridyesi (P. pulmonarius)',price:120,yield:0.95,pm:0.95,fr:[18,24],col:'cream',d:'Açık renkli, sıcağa dayanıklı. Meyve 18–24 °C; soğutma masrafı az.'},
+  {name:'Sarı istiridye (P. citrinopileatus)',price:160,yield:0.8,pm:1.5,fr:[20,27],col:'yellow',fast:1.25,d:'Altın sarısı, pahalı satılır ama çok çabuk açılır.'},
+];
+const CUTS=[
+  {name:'X kesik (torba başına 4–6)',q:1.0,d:'Dengeli küme sayısı ve boyutu.'},
+  {name:'Uzun dikey yarıklar',q:1.03,d:'Daha çok küme; nemi biraz daha hızlı kaybeder.'},
+  {name:'Torbayı tamamen soymak',q:0.85,dry:true,d:'Her yerden mantar çıkar ama yüzey hızla kurur.'},
+];
+const PRICE_O={A:150,B:105,C:60};
+const STEPS_O=[
+  {name:'Substrat',sub:'Talaş + kepek',st:['o_karisim']},
+  {name:'Sterilizasyon',sub:'Otoklav / buhar',st:['o_steril']},
+  {name:'Misel ekimi',sub:'Aşılama',st:['o_ekim']},
+  {name:'Kuluçka odası',sub:'Karanlık',st:['o_kulucka']},
+  {name:'Üretim odası',sub:'Işık + taze hava',st:['o_meyve']},
+  {name:'Hasat',sub:'3 flaş',st:['hasat']},
+  {name:'Satış',sub:'Parti raporu',st:['rapor']},
+];
+function newO(){ return {mix:{type:0,talas:3,kepek:400,kirec:30,alci:30,su:4},mixQ:0,info:null,st:null,
+  ekim:{rate:3,strain:0,kabin:false,alkol:true,maske:true},spawn:null,units:null,risk:0,core:22,coolH:0,kul:null,cut:null,meyve:null,early:false,kulF:1,pinQ:1,ster:0,overQ:1}; }
+const oCO2=v=>Math.round(400+3600/(1+v*(G.up.klima?3:2.4)));
+function oStats(m){
+  const tDM=m.talas*0.88, kDM=m.kepek/1000*0.88, lDM=m.kirec/1000, gDM=m.alci/1000;
+  const DM=tDM+kDM+lDM+gDM;
+  const N=(tDM*0.0015+kDM*0.025)/DM*100;
+  const bran=kDM/Math.max(0.001,tDM+kDM)*100, lime=lDM/DM*100, gyp=gDM/DM*100;
+  const pH=clamp(5.0+1.6*lime,4.5,9.5);
+  const water=m.talas*0.12+m.kepek/1000*0.12+m.su;
+  const total=DM+water;
+  return {DM,N,bran,lime,gyp,pH,moist:water/total*100,total,bags:Math.round(total*1000/2.5)};
+}
+const oScore=s=>0.3*band(s.moist,60,66,8)+0.25*band(s.bran,15,22,10)+0.2*band(s.pH,6.5,7.5,1.2)+0.15*band(s.N,0.5,0.9,0.4)+0.1*band(s.gyp,0.5,2,1.5);
+const oCost=m=>m.talas*TALAS[m.type].price+m.kepek*9+m.kirec*5+m.alci*6+m.su*40+2000;
+function speciesPick(mode){ const cur=mode==='next'?G.lastSp:B.sp, act=mode==='next'?'nextsp':'species';
+  return `<div class="seg" role="group" aria-label="Ürün seçimi"><button data-act="${act}:o" aria-pressed="${cur==='o'}">İstiridye mantarı<small>Talaş + kepek torbası</small></button><button data-act="${act}:a" aria-pressed="${cur==='a'}">Beyaz şapkalı mantar<small>Kompost + örtü toprağı</small></button></div>`; }
+function oInfect(pNew,spread){ const U=B.o.units, inf=[];
+  U.forEach((u,i)=>{ if(u!==1) return; const r=Math.floor(i/8),c=i%8;
+    for(const [dr,dc] of [[0,1],[0,-1],[1,0],[-1,0]]){ const rr=r+dr,cc=c+dc; if(rr<0||rr>5||cc<0||cc>7) continue; const j=rr*8+cc; if(U[j]===0&&rng()<0.16*spread) inf.push(j); } });
+  const healthy=[]; U.forEach((u,i)=>{ if(u===0) healthy.push(i); });
+  if(healthy.length&&rng()<pNew) inf.push(healthy[Math.floor(rng()*healthy.length)]);
+  const uniq=[...new Set(inf)]; uniq.forEach(j=>U[j]=1);
+  if(uniq.length){ const per=Math.round(B.o.info.bags/48); log(`Yeşil küf (Trichoderma) ${uniq.length*per} torbada görüldü!`,'bad'); } }
+const oInfCount=()=>B.o.units.filter(u=>u===1).length;
+const oLost=()=>B.o.units.filter(u=>u!==0).length;
+function oKulDay(S){
+  const k=G.up.klima?0.85:0.6;
+  const metab=1+4*Math.sin(Math.PI*Math.min(1,S.col/100));
+  S.btemp+=((S.set+metab-S.vent*1.0)-S.btemp)*k;
+  S.co2=Math.round(800+5000*(0.3+0.7*S.col/100)/(1+S.vent*1.2));
+  const t=S.btemp;
+  const tf=(t>=22&&t<=27)?1:(t>=20&&t<=28.5)?0.75:(t>=17&&t<=30)?0.45:t>30?0.15:0.2;
+  if(t>30){ S.dmg+=(t-30)*2.5; log(`Torba içi ${fmt(t,1)} °C! Misel aşırı ısıdan zarar görüyor.`,'bad'); }
+  const sp=B.o.spawn, sf=0.6+0.45*Math.min(1.3,sp.rate/4), before=S.col;
+  S.col=Math.min(100,S.col+6.4*tf*TALAS[B.o.mix.type].colF*sf*(1-sp.kill));
+  if(S.light>0&&S.col>60&&!B.o.early){ B.o.early=true; B.notes.oearly=1; log('Işık nedeniyle torbaların içinde erken iğne başları oluştu.','bad'); }
+  oInfect(B.o.risk*(t>28?1.8:1)*(S.hum>85?1.3:1)*(S.col<50?1.3:0.7),1);
+  pay('Enerji ve işçilik',500+Math.abs(S.set-18)*35+S.vent*180+S.light*40);
+  S.day++; G.day++; S.hist.push(+S.btemp.toFixed(1));
+  if(S.col>=100&&before<100) log('Misel torbaları bembeyaz sardı. Kuluçka tamam.','ok');
+}
+function oMeyveDay(S){
+  const st=OSTR[B.o.spawn.strain], cut=CUTS[B.o.cut], k=G.up.klima?0.75:0.5;
+  S.btemp+=(S.set+0.8-S.vent*0.4-S.btemp)*k;
+  S.co2=oCO2(S.vent);
+  const humEff=S.hum-S.vent*1.5-(cut.dry?4:0);
+  const q=band(S.btemp,st.fr[0],st.fr[1],4)*band(S.co2,0,1000,1200)*band(humEff,85,95,8)*(0.3+0.7*band(S.light,8,12,8));
+  const before=S.pins;
+  S.pins=Math.min(100,S.pins+40*q); if(q>0.15){ S.qsum+=q; S.qdays++; }
+  oInfect(B.o.risk*0.4,0.5);
+  if(rng()<0.05*(G.up.hepa?0.6:1)){ if(!B.bio.pests) log('Mantar sinekleri torbalara üşüştü!','bad'); B.bio.pests++; }
+  if(B.bio.pests) B.bio.pestDays++;
+  pay('Enerji ve işçilik',600+Math.abs(S.set-18)*40+S.vent*220+S.light*60+Math.max(0,S.hum-80)*25);
+  S.day++; G.day++; S.hist.push(+S.btemp.toFixed(1));
+  if(before<30&&S.pins>=30) log('Torba kesiklerinde ilk iğne başları göründü!','ok');
+  if(S.pins>=100) log('Kümeler oluştu. Hasada hazırlanın.','ok');
+  if(q<0.15&&S.day>=3) log('İğne başı oluşmuyor: ışığı, CO₂\'yi, nemi ve türe uygun sıcaklığı kontrol edin.','bad');
+}
+function startHarvestO(){
+  const o=B.o, s=o.info, st=OSTR[o.spawn.strain], cut=CUTS[o.cut];
+  const healthy=o.units.filter(u=>u===0).length/48;
+  const nutF=0.75+0.25*clamp(s.bran/18,0,1.15);
+  const BE=0.95*(0.5+0.5*o.mixQ)*TALAS[o.mix.type].q*nutF*healthy*o.kulF*(0.55+0.45*o.pinQ)*(1-o.spawn.kill*0.7)*st.yield*cut.q*(1-Math.min(0.3,B.bio.pestDays*0.012))*(o.early?0.94:1)*o.overQ;
+  if(healthy<0.92) B.notes.ocontam=Math.round((1-healthy)*100);
+  if(B.bio.pestDays>3) B.notes.pest=B.bio.pestDays;
+  B.comp={t:s.DM,q:1};
+  B.h={flush:0,phase:'ready',totalKg:s.DM*1000*BE,BE,kg:{A:0,B:0,C:0},lost:0,waterMult:1,wetBoost:0,set:Math.round((st.fr[0]+st.fr[1])/2),hum:90,vent:2,light:10};
+  B.stage='hasat'; log('Üretim odası hasada hazır. İlk flaş geliyor.');
+}
+Object.assign(ACT,{
+  nextsp(x){ G.lastSp=x; },
+  omix(){ const m=B.o.mix, s=oStats(m); pay('Substrat hammaddesi',oCost(m)); pay('Torba ve dolum',s.bags*4);
+    B.o.info=s; B.o.mixQ=oScore(s);
+    if(B.o.mixQ<0.8) B.notes.omix=1; if(m.type===2) B.notes.ocam=1;
+    B.o.st={method:null,pow:85,ch:22,core:22,min:0,dose:0,over:0,hist:[22]};
+    B.stage='o_steril'; G.day++;
+    log(`${fmt(m.talas,1)} t ${TALAS[m.type].name.toLowerCase()}, ${fmt(m.kepek)} kg kepek, ${fmt(m.kirec)} kg kireç, ${fmt(m.alci)} kg alçı ve ${fmt(m.su,1)} m³ su karıştırıldı. ${fmt(s.bags)} torba dolduruldu (nem %${fmt(s.moist,1)}, pH ${fmt(s.pH,1)}).`);
+    if(B.o.mixQ<0.8) log('Substrat oranları hedeflerin dışında; verim düşük olabilir.','bad'); },
+  ometh(m){ B.o.st.method=m; log(m==='oto'?'Torbalar otoklava yüklendi.':'Torbalar buhar odasına (pastörizasyon) yüklendi.'); },
+  ost(n){ const S=B.o.st, oto=S.method==='oto', bagF=Math.max(0.6,B.o.info.bags/3000);
+    for(let i=0;i<n;i++){ if(S.min>=36*60) break;
+      const maxT=oto?20+105*S.pow/100:20+80*S.pow/100;
+      S.ch+=(maxT-S.ch)*0.4; S.core+=(S.ch-S.core)*0.22;
+      const was=S.dose;
+      if(oto){ if(S.core>=118) S.dose+=30; if(S.dose>240){ S.over+=30; if(S.over===30) log('Substrat gereğinden uzun pişiyor; kepek karamelize oluyor.','bad'); } }
+      else if(S.core>=65) S.dose+=30;
+      if(oto&&was<90&&S.dose>=90) log('Torba merkezi 1,5 saat 118 °C\'nin üzerinde kaldı: sterilizasyon tamam.','ok');
+      if(!oto&&was<480&&S.dose>=480) log('Torba merkezi 8 saat 65 °C\'nin üzerinde kaldı: pastörizasyon tamam.','ok');
+      pay('Kazan enerjisi',((oto?380:200)*S.pow/100+60)*bagF);
+      S.min+=30; if(S.min%(24*60)===0) G.day++;
+      S.hist.push(+S.core.toFixed(1)); } },
+  ostdone(){ const S=B.o.st, oto=S.method==='oto';
+    B.o.ster=oto?clamp(S.dose/90,0,1):clamp(S.dose/480,0,1)*0.85;
+    B.o.overQ=1-Math.min(0.15,S.over/60*0.03);
+    if(B.o.ster<0.8) B.notes.oster=1; if(!oto&&B.o.info.bran>18) B.notes.obranpas=1; if(S.over) B.notes.oover=1;
+    B.o.core=S.core; B.o.coolH=0; G.day++; B.stage='o_ekim';
+    log(`Kazan kapatıldı (${Math.floor(S.min/60)} saat). Torba merkezi şu an ${fmt(S.core)} °C.`); },
+  ocool(h){ for(let i=0;i<h/2;i++){ B.o.core+=(22-B.o.core)*0.33; B.o.coolH+=2; if(B.o.coolH%24===0) G.day++; }
+    log(`Torbalar ${h} saat soğumaya bırakıldı. Torba merkezi ${fmt(B.o.core)} °C.`); },
+  oekim(){ const e=B.o.ekim, st=OSTR[e.strain], s=B.o.info;
+    const kg=s.total*1000*e.rate/100;
+    pay('Misel (tohumluk)',kg*st.price);
+    if(e.kabin) pay('Hijyen',9000); if(e.alkol) pay('Hijyen',1500); if(e.maske) pay('Hijyen',1500);
+    pay('Aşılama işçiliği',s.bags*1.2);
+    const kill=B.o.core>30?clamp((B.o.core-30)/15,0,0.9):0;
+    const branF=1+Math.max(0,s.bran-15)*0.06;
+    B.o.risk=(0.035+(1-B.o.ster)*0.5)*branF*(e.kabin?0.55:1)*(e.alkol?0.8:1)*(e.maske?0.85:1)*(G.up.hepa?0.6:1);
+    B.o.spawn={kg,rate:e.rate,strain:e.strain,kill}; B.o.units=Array(48).fill(0);
+    B.o.kul={day:0,set:24,hum:70,vent:1,light:0,btemp:Math.min(B.o.core,28),col:0,co2:3000,dmg:0,hist:[+Math.min(B.o.core,28).toFixed(1)]};
+    if(kill>0) B.notes.okill=Math.round(B.o.core);
+    B.stage='o_kulucka';
+    log(`${fmt(kg)} kg ${st.name} miseli ${fmt(s.bags)} torbaya aşılandı. Torbalar karanlık kuluçka odasında.`);
+    if(kill>0) log(`Torbalar ${fmt(B.o.core)} °C iken aşılandı; misellerin bir kısmı haşlandı.`,'bad'); },
+  ogrow(n){ const S=B.o.kul; for(let i=0;i<n;i++){ if(S.col>=100||S.day>=30) break; const inf=oInfCount(); oKulDay(S); if(n>1&&oInfCount()>inf) break; } },
+  ocull(){ const n=oInfCount(), per=Math.round(B.o.info.bags/48); pay('Bulaşık torba ayıklama',n*per*2);
+    B.o.units=B.o.units.map(u=>u===1?2:u); log(`${n*per} küflü torba odadan çıkarıldı.`,'ok'); },
+  okuldone(){ const S=B.o.kul; B.o.kulF=clamp(1-S.dmg/100,0.3,1)*Math.min(1,0.4+0.6*S.col/100);
+    if(S.dmg>0) B.notes.oheat=1; B.stage='o_meyve'; log(`Kuluçka bitti (${S.day} gün). Torbalar üretim odasına taşındı.`); },
+  ocut(i){ B.o.cut=i; pay('Torba kesme',B.o.info.bags*0.5);
+    B.o.meyve={day:0,set:22,hum:80,vent:1,light:0,btemp:B.o.kul.btemp,co2:oCO2(1),pins:0,qsum:0,qdays:0,hist:[+B.o.kul.btemp.toFixed(1)]};
+    log(`Torbalar açıldı: ${CUTS[i].name.toLowerCase()}.`); },
+  omeyve(n){ const S=B.o.meyve; for(let i=0;i<n;i++){ if(S.pins>=100||S.day>=12) break; oMeyveDay(S); } },
+  omeyvedone(){ const S=B.o.meyve; B.o.pinQ=(S.qdays?S.qsum/S.qdays:0.4)*Math.min(1,0.3+0.7*S.pins/100);
+    if(B.o.pinQ<0.75) B.notes.opin=1; startHarvestO(); },
+});
+function oClim(S,pre,tmin,tmax,hmin,hint,lhint){
+  return slider(pre+'set','Oda hava sıcaklığı',S.set,tmin,tmax,0.5,'°C',v=>S.set=v,hint)+
+    slider(pre+'hum','Bağıl nem',S.hum,hmin,99,1,'%',v=>S.hum=v)+
+    slider(pre+'vent','Taze hava (havalandırma)',S.vent,0,3,1,'',v=>S.vent=v,null,v=>VENT[v])+
+    slider(pre+'light','Işık',S.light,0,16,1,'saat/gün',v=>S.light=v,lhint);
+}
+function oBioCtl(){ let s=''; const n=oInfCount(), per=Math.round(B.o.info.bags/48);
+  if(n) s+=`<button data-act="ocull" class="danger">Küflü torbaları ayıkla <small>${n*per} torba · ${tl(n*per*2)}</small></button>`;
+  if(B.bio.pests) s+=`<button data-act="trap" class="danger">Sinek tuzağı kur <small>${tl(1500)}</small></button>`;
+  return s?`<div class="btns">${s}</div>`:''; }
+Object.assign(STAGES,{
+ o_karisim:{cap:()=>'Hazırlık alanı · substrat karışımı',
+  info:'İstiridye mantarı (Pleurotus) odun çürüten bir mantardır; selüloz ve lignini doğrudan sindirir, bu yüzden kompost gerekmez. Temel malzeme talaştır. Buğday kepeği azot ve vitamin ekler (kuru ağırlığın %15–22\'si). Kireç pH\'ı 6,5–7,5\'e ayarlar ve rakip küfleri baskılar. Alçı yapıyı gevşetir. Nem %60–65 olmalı: avuçta sıkınca parmak arasından ancak birkaç damla su gelmelidir.',
+  panel(){ const m=B.o.mix,c=cap();
+   return `${speciesPick()}<div><h2>Substrat karışımı</h2><div class="sub">Talaş, kepek, kireç, alçı ve suyu karıştırın. Karışım 2,5 kg'lık torbalara doldurulacak.</div></div>
+   <div class="sec"><span class="sec-t">Talaş cinsi</span><div class="choices">${TALAS.map((x,i)=>`<label class="choice ${m.type===i?'on':''}"><input type="radio" name="talas" value="${i}" ${m.type===i?'checked':''} data-bind="talas"><div><b>${x.name}</b><span>${x.d}</span></div><span class="pr">${fmt(x.price)} ₺/t</span></label>`).join('')}</div></div>
+   <div class="sec">${slider('omt','Talaş',m.talas,1,6*c,0.5,'ton',v=>m.talas=v)}${slider('omk','Buğday kepeği',m.kepek,0,2000*c,25,'kg',v=>m.kepek=v)}${slider('oml','Kireç (kalsiyum karbonat)',m.kirec,0,200*c,5,'kg',v=>m.kirec=v)}${slider('oma','Alçı (jips)',m.alci,0,200*c,5,'kg',v=>m.alci=v)}${slider('oms','Su',m.su,0,12*c,0.5,'m³',v=>m.su=v)}</div>
+   <div id="live"></div>`; },
+  live(){ const m=B.o.mix, s=oStats(m), q=oScore(s), cost=oCost(m)+s.bags*4;
+   const sq=s.moist<58?['warn','Yumruk testi: sıkınca su gelmiyor, karışım dağılıyor. Çok kuru.']:s.moist>68?['warn','Yumruk testi: sıkınca su akıyor. Çok ıslak, torbanın dibinde oksijensiz kalır.']:['ok','Yumruk testi: sıkınca birkaç damla geliyor, karışım topak kalıyor. İdeal.'];
+   return `<div class="sec"><div class="gauges">${gauge('Nem',s.moist,'%',40,80,60,66,1)}${gauge('Kepek / kuru madde',s.bran,'%',0,40,15,22,1)}${gauge('pH',s.pH,'',4.5,9.5,6.5,7.5,1)}${gauge('Azot (kuru madde)',s.N,'%',0,1.5,0.5,0.9,2)}</div>
+   <div class="note ${sq[0]}">${sq[1]}</div>
+   ${prog('Karışım puanı',q*100)}
+   <div class="kv"><span>Yaş karışım</span><span>${fmt(s.total,2)} t</span><span>Kuru madde</span><span>${fmt(s.DM,2)} t</span><span>Torba sayısı (2,5 kg)</span><span>${fmt(s.bags)}</span><span class="tot">Maliyet (torba ve işçilik dahil)</span><span class="tot">${tl(cost)}</span></div>
+   <div class="btns"><button class="pri" data-act="omix">Karıştır ve torbala</button></div></div>`; }},
+ o_steril:{cap:()=>{const S=B.o.st; return S.method?`${S.method==='oto'?'Otoklav':'Buhar odası'} · ${Math.floor(S.min/60)} sa ${S.min%60} dk`:'Kazan dairesi';},
+  info:'Kepekli talaş besince zengin olduğu için küflere de çok elverişlidir. Torbalar otoklavda basınçlı buharla 121 °C\'de sterilize edilir; süre, torbanın merkezi bu sıcaklığa ulaştıktan sonra başlar ve en az 1,5–2 saattir. Daha basit yöntem 65–80 °C buharda 8–12 saat pastörizasyondur. Ucuzdur ama kepek oranı yüksekse küf riski kalır. Torbanın merkezi dış yüzeyden saatlerce geç ısınır.',
+  panel(){ const S=B.o.st, s=B.o.info;
+   if(!S.method) return `<div><h2>Sterilizasyon</h2><div class="sub">${fmt(s.bags)} torba hazır. Yöntemi seçin.</div></div>
+    <div class="cardrow"><div class="card"><b>Otoklav sterilizasyonu</b><span>Basınçlı buhar, 121 °C. Torba merkezi en az 90 dakika 118 °C'nin üzerinde kalmalı. Pahalı ama güvenli.</span><button class="pri" data-act="ometh:oto">Otoklava yükle</button></div>
+    <div class="card"><b>Buharlı pastörizasyon</b><span>65–80 °C buhar, 8 saat ve üzeri. Ucuz; kepek oranı düşükse yeterli olur.</span><button data-act="ometh:pas">Buhar odasına yükle</button></div></div>
+    ${s.bran>18?`<div class="note warn">Kepek oranı %${fmt(s.bran,1)}. Bu kadar zengin karışımda pastörizasyon küf riskini yüksek bırakır.</div>`:''}`;
+   const oto=S.method==='oto', lo=oto?118:65, hi=oto?125:85, need=oto?90:480;
+   return `<div><h2>${oto?'Otoklav sterilizasyonu':'Buharlı pastörizasyon'}</h2><div class="sub">${fmt(s.bags)} torba · ${Math.floor(S.min/60)} saat ${S.min%60} dakika geçti. Torba merkezini izleyin.</div></div>
+   <div class="sec">${slider('osp','Isıtıcı gücü',S.pow,0,100,5,'%',v=>S.pow=v,oto?'%100 güçte kazan 125 °C\'ye çıkar (basınçlı buhar).':'%100 güçte buhar 100 °C\'ye çıkar.')}</div>
+   <div class="gauges">${gauge('Kazan sıcaklığı',S.ch,'°C',20,130,lo,hi,1)}${gauge('Torba merkezi',S.core,'°C',20,130,lo,hi,1)}<div class="g">${prog(oto?'Sterilizasyon (merkez ≥ 118 °C)':'Pastörizasyon (merkez ≥ 65 °C)',Math.min(100,S.dose/need*100),oto?`${Math.min(S.dose,need)} / 90 dk`:`${fmt(Math.min(S.dose,need)/60,1)} / 8 saat`)}</div></div>
+   <div class="sec"><span class="sec-t">Torba merkezi sıcaklığı (30 dakikalık adımlar)</span>${chart(S.hist.slice(-60),20,130,lo,hi,'şimdi')}</div>
+   <div class="btns"><button data-act="ost:1">30 dk ilerlet</button><button data-act="ost:4">2 saat ilerlet</button></div>
+   <div class="btns"><button class="${S.dose>=need?'pri':''}" data-act="ostdone">Kazanı kapat, torbaları çıkar</button></div>
+   ${S.dose<need?`<div class="note warn">${oto?'Sterilizasyon':'Pastörizasyon'} henüz tamamlanmadı. Şimdi çıkarırsanız torbalarda küf riski kalır.</div>`:oto&&S.dose>240?'<div class="note warn">Torbalar gereğinden uzun pişiyor.</div>':'<div class="note ok">Süre tamam. Torbaları çıkarabilirsiniz.</div>'}`; }},
+ o_ekim:{cap:()=>`Aşılama odası · torba merkezi ${fmt(B.o.core)} °C`,
+  info:'Torbalar 25–30 °C\'nin altına soğumadan misel eklenmez; sıcak substrat miseli haşlar. Aşılama temiz bir odada veya laminar akış kabininde yapılır. İstiridye mantarında misel oranı yaş ağırlığın %3–5\'idir. Torbaların ağzı filtreli kapak veya pamuk tıpayla kapatılır.',
+  panel(){ const e=B.o.ekim, s=B.o.info, core=B.o.core;
+   return `<div><h2>Misel ekimi (aşılama)</h2><div class="sub">${fmt(s.bags)} torba · ${B.o.ster>=0.99?'steril':B.o.ster>=0.8?'pastörize':'yetersiz ısıl işlem'}</div></div>
+   <div class="gauges">${gauge('Torba merkezi',core,'°C',15,110,18,28,1)}<div class="g"><div class="g-h"><span>Soğuma süresi</span><b>${B.o.coolH}<i>saat</i></b></div><div class="btns"><button data-act="ocool:2" ${core<=23?'disabled':''}>2 saat bekle</button><button data-act="ocool:8" ${core<=23?'disabled':''}>8 saat bekle</button></div></div></div>
+   <div class="sec"><span class="sec-t">İstiridye türü</span><div class="choices">${OSTR.map((x,i)=>`<label class="choice ${e.strain===i?'on':''}"><input type="radio" name="ostrain" value="${i}" ${e.strain===i?'checked':''} data-bind="ostrain"><div><b>${x.name}</b><span>${x.d}</span></div><span class="pr">${x.price} ₺/kg</span></label>`).join('')}</div></div>
+   <div class="sec">${slider('oer','Misel oranı (yaş ağırlığa göre)',e.rate,1,8,0.5,'%',v=>e.rate=v,'Önerilen: %3–5.')}</div>
+   <div class="sec"><span class="sec-t">Hijyen önlemleri</span><div class="choices">
+    ${[['kabin','Laminar akış kabini / temiz oda',9000,'Havadaki küf sporlarını en çok bu keser.'],['alkol','Alkol, alev ve yüzey dezenfeksiyonu',1500,'Aletleri ve masayı her torbada siler.'],['maske','Maske, bone, eldiven',1500,'Personel kaynaklı bulaşmayı azaltır.']].map(([k,n,p,d])=>`<label class="choice ${e[k]?'on':''}"><input type="checkbox" data-bind="${k}" ${e[k]?'checked':''}><div><b>${n}</b><span>${d}</span></div><span class="pr">${tl(p)}</span></label>`).join('')}
+   </div></div><div id="live"></div>`; },
+  live(){ const e=B.o.ekim, s=B.o.info, st=OSTR[e.strain]; const kg=s.total*1000*e.rate/100;
+   const hyg=(e.kabin?9000:0)+(e.alkol?1500:0)+(e.maske?1500:0), lab=s.bags*1.2;
+   return `<div class="kv"><span>Misel miktarı</span><span>${fmt(kg)} kg</span><span>Misel bedeli</span><span>${tl(kg*st.price)}</span><span>Hijyen</span><span>${tl(hyg)}</span><span>Aşılama işçiliği</span><span>${tl(lab)}</span><span class="tot">Toplam</span><span class="tot">${tl(kg*st.price+hyg+lab)}</span></div>
+   ${B.o.core>30?`<div class="note bad">Torbalar hâlâ ${fmt(B.o.core)} °C. Şimdi aşılarsanız misel haşlanır. Soğumasını bekleyin.</div>`:'<div class="note ok">Torbalar aşılamaya uygun sıcaklıkta.</div>'}
+   <div class="btns"><button class="pri" data-act="oekim">Aşıla ve kuluçkaya al</button></div>`; }},
+ o_kulucka:{cap:()=>`Kuluçka odası · ${B.o.kul.day}. gün`,
+  info:'Kuluçka karanlıkta yapılır. Torba içi sıcaklık 22–27 °C olmalı; misel 14–21 günde torbayı bembeyaz sarar. Torbalar sık dizilirse kendi ürettikleri ısıyla 30 °C\'yi aşabilir. Yeşil küf (Trichoderma) görülen torbalar hemen odadan çıkarılmalıdır; sporları diğer torbalara bulaşır. Işık, misel tamamlanmadan torbanın içinde erken mantar oluşturur.',
+  panel(){ const S=B.o.kul, done=S.col>=100, per=Math.round(B.o.info.bags/48), inf=oInfCount();
+   return `<div><h2>Kuluçka odası</h2><div class="sub">${S.day}. gün · ${fmt(B.o.info.bags-(oLost()-inf)*per)} torba karanlıkta.</div></div>
+   <div class="sec">${oClim(S,'ok',16,32,50,'Torba içi, oda havasından birkaç derece sıcaktır.','Kuluçkada ışığa gerek yok.')}</div>
+   <div class="gauges">${gauge('Torba içi sıcaklık',S.btemp,'°C',14,34,22,27,1)}${gauge('Oda CO₂',S.co2,'ppm',0,8000,1500,8000)}<div class="g">${prog('Kolonizasyon',S.col)}</div>${gauge('Kaybedilen torba',oLost()/48*100,'%',0,40,0,2,1)}</div>
+   ${inf?`<div class="note bad">${inf*per} torbada yeşil küf var ve yan torbalara yayılıyor.</div>`:''}${oBioCtl()}
+   <div class="sec"><span class="sec-t">Torba içi sıcaklık</span>${chart(S.hist,14,34,22,27,S.day+'. gün')}</div>
+   ${done||S.day>=30?`<div class="btns"><button class="pri" data-act="okuldone">Üretim odasına taşı</button></div>`:`<div class="btns"><button class="pri" data-act="ogrow:1">1 gün ilerlet</button><button data-act="ogrow:3">3 gün ilerlet</button></div>`}`; }},
+ o_meyve:{cap:()=>B.o.meyve?`Üretim odası · ${B.o.meyve.day}. gün`:'Üretim odası · torba açma',
+  info:'Üretim odasında torbalara kesik açılır. İstiridye mantarı beyaz şapkalı mantarın aksine ışık ister: günde 8–12 saat, 200–500 lüks. Nem %85–95, CO₂ 1000 ppm\'in altında olmalıdır. CO₂ yüksek veya ışık yetersizse saplar uzar, şapkalar küçük kalır. Sıcaklığı türe göre ayarlayın: kış istiridyesi serin, sarı istiridye sıcak sever.',
+  panel(){ const M=B.o.meyve, st=OSTR[B.o.spawn.strain];
+   if(!M) return `<div><h2>Üretim odası · Torba açma</h2><div class="sub">Misel torbaları sardı. Mantarın çıkacağı yerleri açın.</div></div>
+    <div class="cardrow">${CUTS.map((c,i)=>`<div class="card"><b>${c.name}</b><span>${c.d}</span><button class="${i===0?'pri':''}" data-act="ocut:${i}">Bu şekilde aç</button></div>`).join('')}</div>
+    <div class="note">Kesim işçiliği: ${tl(B.o.info.bags*0.5)}</div>`;
+   const done=M.pins>=100, humEff=M.hum-M.vent*1.5-(CUTS[B.o.cut].dry?4:0);
+   return `<div><h2>Üretim odası · Meyve oluşumu</h2><div class="sub">${M.day}. gün · ${st.name}: ${st.fr[0]}–${st.fr[1]} °C, ışık, taze hava.</div></div>
+   <div class="sec">${oClim(M,'om',8,30,70,'Torba sıcaklığı oda havasını gecikmeyle izler.','İstiridye mantarı günde 8–12 saat ışık ister.')}</div>
+   <div class="gauges">${gauge('Torba sıcaklığı',M.btemp,'°C',6,32,st.fr[0],st.fr[1],1)}${gauge('Oda CO₂',oCO2(M.vent),'ppm',0,5000,0,1000)}${gauge('Nem (torba yüzeyinde)',humEff,'%',65,99,85,95,1)}${gauge('Işık',M.light,'saat',0,16,8,12)}<div class="g">${prog('İğne başları',M.pins)}</div>${gauge('Kaybedilen torba',oLost()/48*100,'%',0,40,0,2,1)}</div>
+   ${oInfCount()?`<div class="note bad">${oInfCount()*Math.round(B.o.info.bags/48)} torbada yeşil küf var.</div>`:''}${oBioCtl()}
+   <div class="sec"><span class="sec-t">Torba sıcaklığı</span>${chart(M.hist,6,32,st.fr[0],st.fr[1],M.day+'. gün')}</div>
+   ${done||M.day>=12?`<div class="btns"><button class="pri" data-act="omeyvedone">Hasada başla</button></div>`:`<div class="btns"><button class="pri" data-act="omeyve:1">1 gün ilerlet</button></div>`}
+   ${M.day>=12&&!done?'<div class="note bad">Kümeler tam oluşmadı. Hasat zayıf olacak.</div>':''}`; }},
+});
+/* --- istiridye çizimleri --- */
+function oLayout(){ const bags=[],slots=[];
+  for(let r=0;r<2;r++) for(let c=0;c<6;c++){ const cx=(c+0.5)/6, top=0.03+r*0.5, h=0.44; bags.push({cx,top,w:0.1,h});
+    for(let j=0;j<3;j++) slots.push({x:cx+((j+c)%2?0.028:-0.028),y:top+h*(0.2+j*0.3)}); }
+  return {bags,slots}; }
+const OCOL={grey:['#6F7984','#9DA4AB','#D3CFC6'],cream:['#CDBFA6','#E6DDCB','#F1ECE2'],yellow:['#CFA51F','#E6C43F','#EEDB8C']};
+function drawOyster(x,y,r,s,col){
+  const C=OCOL[col]||OCOL.grey, v=s.s;
+  if(s.dead){ ctx.fillStyle='#8A7650'; for(const [dx,dy] of [[-0.4,-0.2],[0.4,-0.25],[0,-0.5]]){ ctx.beginPath(); ctx.ellipse(x+dx*r,y+dy*r,r*0.6,r*0.35,dx,0,7); ctx.fill(); } return; }
+  if(v<0.45){ const n=7, rr=r*(0.25+v*0.5); ctx.fillStyle=C[0];
+    for(let i=0;i<n;i++){ ctx.beginPath(); ctx.arc(x+Math.cos(i*0.9)*rr*1.1,y+Math.sin(i*1.3)*rr*0.8,Math.max(1.5,rr*0.45),0,7); ctx.fill(); } return; }
+  const caps=[[-0.55,-0.15,0.75],[0.55,-0.2,0.72],[0,-0.55,0.9],[-0.25,0.25,0.62],[0.3,0.22,0.58]];
+  const ext=s.ls?1.45:1, color=v<0.75?C[0]:v<0.92?C[1]:C[2];
+  ctx.strokeStyle='#EDE8DC'; ctx.lineWidth=Math.max(2,r*0.16);
+  for(const [dx,dy] of caps){ ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+dx*r*ext*0.8,y+dy*r*ext*0.8); ctx.stroke(); }
+  for(const [dx,dy,sc] of caps){ const cx=x+dx*r*ext, cy=y+dy*r*ext, rr=r*sc*(s.ls?0.75:1)*(0.55+0.45*Math.min(1,v)), ang=Math.atan2(dy,dx)+Math.PI/2;
+    ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(cx+2,cy+3,rr,rr*0.68,ang,0,7); ctx.fill();
+    const g=ctx.createRadialGradient(cx-rr*0.3,cy-rr*0.3,rr*0.1,cx,cy,rr); g.addColorStop(0,v<0.75?C[1]:C[2]); g.addColorStop(1,color);
+    ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(cx,cy,rr,rr*0.68,ang,0,7); ctx.fill();
+    if(v<0.75){ ctx.strokeStyle='rgba(40,40,45,.45)'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.ellipse(cx,cy,rr*0.92,rr*0.6,ang,0.2,Math.PI-0.2); ctx.stroke(); }
+    if(v>=0.92){ ctx.strokeStyle='rgba(255,255,255,.55)'; ctx.lineWidth=1.2; ctx.beginPath(); for(let a=0;a<=6.3;a+=0.35){ const w=1+0.08*Math.sin(a*6); const px=cx+Math.cos(a)*rr*w, py=cy+Math.sin(a)*rr*0.68*w; a===0?ctx.moveTo(px,py):ctx.lineTo(px,py);} ctx.stroke(); }
+    if(s.bl){ ctx.fillStyle='rgba(176,140,50,.8)'; ctx.beginPath(); ctx.arc(cx+rr*0.2,cy,rr*0.18+1,0,7); ctx.fill(); }
+    if(s.dry){ ctx.strokeStyle='rgba(60,50,40,.6)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(cx-rr*0.6,cy); ctx.lineTo(cx-rr*0.2,cy+rr*0.15); ctx.stroke(); } }
+  if(v>=0.92){ ctx.fillStyle='rgba(245,243,238,.55)'; for(let i=0;i<10;i++){ const a=i*0.63+v*9; ctx.fillRect(x+Math.cos(a)*r*(1.4+0.3*Math.sin(i)),y+r*0.3+Math.sin(a)*r*0.9+(v-0.92)*30,1.6,1.6); } }
+}
+function drawBagShape(c,x,y,w,h,col,opts={}){
+  c.fillStyle='rgba(235,235,232,.18)'; c.beginPath(); c.roundRect(x-2,y-6,w+4,h+8,[10,10,6,6]); c.fill();
+  c.fillStyle='#8C6B47'; c.beginPath(); c.roundRect(x,y,w,h,[8,8,5,5]); c.fill();
+  if(col>0){ c.fillStyle=`rgba(244,241,232,${clamp(col,0,1)*0.92})`; c.beginPath(); c.roundRect(x,y,w,h,[8,8,5,5]); c.fill(); }
+  c.fillStyle='#D8D2C4'; c.fillRect(x+w/2-6,y-12,12,8);
+  if(opts.mold){ c.fillStyle='rgba(68,140,58,.9)'; c.beginPath(); c.arc(x+w*0.35,y+h*0.4,w*0.22,0,7); c.arc(x+w*0.65,y+h*0.7,w*0.18,0,7); c.fill(); c.fillStyle='rgba(160,210,100,.7)'; c.beginPath(); c.arc(x+w*0.35,y+h*0.4,w*0.08,0,7); c.fill(); }
+  c.fillStyle='rgba(255,255,255,.18)'; c.fillRect(x+3,y+4,3,h-10);
+}
+function oPile(gy,cx,w,hh,col,col2,label,val,seed,dots){
+  ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(cx-w/2,gy); ctx.quadraticCurveTo(cx-w*0.25,gy-hh*1.05,cx,gy-hh); ctx.quadraticCurveTo(cx+w*0.25,gy-hh*1.05,cx+w/2,gy); ctx.fill();
+  const r=mulberry32(seed); ctx.fillStyle=col2; for(let i=0;i<w*hh/(dots?25:70);i++){ const x=cx-w/2+r()*w, y=gy-r()*hh*0.92*(1-Math.abs(x-cx)/(w/2)); ctx.fillRect(x,y,dots?1.6:4,dots?1.6:1.4); }
+  txt(label,cx,gy+16,'#EFE6DA',11,'center'); txt(val,cx,gy+30,'#C9BBA8',10,'center'); }
+function drawOKarisim(t){ bgBarn(); const m=B.o.mix,c=cap(), gy=SH*0.8, cw=SW/5;
+  ctx.fillStyle='#4A3F36'; ctx.fillRect(0,gy,SW,SH-gy);
+  const tc=['#D9B98A','#C99E6A','#B89A6A'][m.type];
+  oPile(gy,cw*0.6,cw*1.05,14+m.talas/(6*c)*SH*0.55,tc,'rgba(255,240,210,.45)','Talaş',fmt(m.talas,1)+' t',4,true);
+  oPile(gy,cw*1.75,cw*0.8,10+m.kepek/(2000*c)*SH*0.45,'#B07A3A','#D39A55','Kepek',fmt(m.kepek)+' kg',7,true);
+  const bag=(cx,n,colr,label,val)=>{ for(let i=0;i<n;i++){ const col=i%3,row=Math.floor(i/3); const x=cx-24+col*17,y=gy-12-row*10; ctx.fillStyle=colr; ctx.fillRect(x,y,15,9); ctx.fillStyle='rgba(0,0,0,.18)'; ctx.fillRect(x,y+7,15,2);} txt(label,cx,gy+16,'#EFE6DA',11,'center'); txt(val,cx,gy+30,'#C9BBA8',10,'center'); };
+  bag(cw*2.7,Math.round(m.kirec/12),'#F1EFEA','Kireç',fmt(m.kirec)+' kg'); bag(cw*3.5,Math.round(m.alci/12),'#D9D6CF','Alçı',fmt(m.alci)+' kg');
+  const tx=cw*4.45-22,tw=44,th=SH*0.5; ctx.fillStyle='#55606A'; ctx.fillRect(tx,gy-th,tw,th); const fill=m.su/(12*c);
+  ctx.fillStyle='#5DA0C8'; ctx.fillRect(tx+3,gy-3-(th-6)*fill,tw-6,(th-6)*fill);
+  txt('Su',cw*4.45,gy+16,'#EFE6DA',11,'center'); txt(fmt(m.su,1)+' m³',cw*4.45,gy+30,'#C9BBA8',10,'center'); }
+function drawOSteril(t){ bgBarn(); const S=B.o.st; const x0=SW*0.07,x1=SW*0.8,cy=SH*0.47,rh=SH*0.3;
+  ctx.fillStyle='#2A2522'; ctx.fillRect(0,SH*0.86,SW,SH*0.14);
+  ctx.fillStyle='#5E656B'; ctx.fillRect(x0+20,cy+rh,10,SH*0.86-cy-rh); ctx.fillRect(x1-30,cy+rh,10,SH*0.86-cy-rh);
+  ctx.fillStyle='#8F969C'; ctx.beginPath(); ctx.roundRect(x0,cy-rh,x1-x0,rh*2,rh); ctx.fill();
+  ctx.fillStyle='#262321'; ctx.beginPath(); ctx.roundRect(x0+rh*0.5,cy-rh*0.62,x1-x0-rh*1.2,rh*1.24,10); ctx.fill();
+  const heat=clamp((S.core-25)/100,0,1);
+  const bw=Math.max(14,(x1-x0-rh*1.4)/14); for(let r=0;r<2;r++) for(let i=0;i<12;i++){ const bx=x0+rh*0.6+i*bw*1.1, by=cy-rh*0.5+r*rh*0.58; if(bx+bw>x1-rh*0.7) break; drawBagShape(ctx,bx,by,bw,rh*0.48,0); }
+  ctx.fillStyle=`rgba(255,${Math.round(150-90*heat)},40,${0.08+heat*0.3})`; ctx.beginPath(); ctx.roundRect(x0+rh*0.5,cy-rh*0.62,x1-x0-rh*1.2,rh*1.24,10); ctx.fill();
+  ctx.fillStyle='#6F767C'; ctx.beginPath(); ctx.ellipse(x1-rh*0.15,cy,rh*0.32,rh*0.95,0,0,7); ctx.fill(); ctx.strokeStyle='#4E555A'; ctx.lineWidth=4; ctx.stroke();
+  const gx=x0+rh*0.9, gyy=cy-rh-16; ctx.fillStyle='#EDEAE3'; ctx.beginPath(); ctx.arc(gx,gyy,15,0,7); ctx.fill(); ctx.strokeStyle='#4E555A'; ctx.lineWidth=2; ctx.stroke();
+  const ang=-2.4+clamp((S.ch-20)/110,0,1)*4.8; ctx.strokeStyle='#C23A2B'; ctx.beginPath(); ctx.moveTo(gx,gyy); ctx.lineTo(gx+Math.cos(ang)*11,gyy+Math.sin(ang)*11); ctx.stroke();
+  if(S.method) drawSteam(x0+rh*1.6,x0+rh*1.9,cy-rh,clamp((S.ch-60)/60,0,0.7),t);
+  if(!S.method) txt('Yöntem seçilmedi',(x0+x1)/2,cy,'#EFE6DA',13,'center');
+  txt(`Kazan ${fmt(S.ch)}°C`,SW*0.9,cy-12,'#EFE6DA',12,'center'); txt(`Merkez ${fmt(S.core)}°C`,SW*0.9,cy+8,'#F2C66B',12,'center'); }
+function drawOEkim(t){ bgBarn(); const e=B.o.ekim, n=8, gy=SH*0.86; const bw=Math.min(54,SW/(n*1.5)); const x0=(SW-n*bw*1.45)/2;
+  ctx.fillStyle='#6C6660'; ctx.fillRect(0,gy,SW,6);
+  const r=mulberry32(11); const col=OSTR[e.strain].col;
+  for(let i=0;i<n;i++){ const x=x0+i*bw*1.45, h=SH*0.5; drawBagShape(ctx,x,gy-h,bw,h,0);
+    const dots=Math.round(e.rate*5); ctx.fillStyle='#EFE9DA'; for(let j=0;j<dots;j++) ctx.fillRect(x+3+r()*(bw-6),gy-h+2+r()*h*0.25,2.4,1.6); }
+  if(B.o.core>35) drawSteam(x0,x0+n*bw*1.45,gy-SH*0.5,clamp((B.o.core-35)/60,0,0.6),t);
+  txt(`Torba merkezi ${fmt(B.o.core)}°C`,SW/2,SH*0.18,B.o.core>30?'#F09A8A':'#8BE0A6',13,'center');
+  txt(OSTR[e.strain].name+` · misel %${fmt(e.rate,1)}`,SW/2,SH*0.18+18,'#C9BBA8',11,'center'); }
+function drawOBags(t,o){ const lightOn=o.light>0;
+  const g=ctx.createLinearGradient(0,0,0,SH); g.addColorStop(0,lightOn?'#3A3530':'#1E1A17'); g.addColorStop(1,lightOn?'#4A423A':'#2A2420'); ctx.fillStyle=g; ctx.fillRect(0,0,SW,SH);
+  const x0=SW*0.04,x1=SW*0.84,y0=16,y1=SH-8, cw=(x1-x0)/8, ch=(y1-y0)/6, U=B.o.units||Array(48).fill(0), st=OSTR[(B.o.spawn||{strain:0}).strain], C=OCOL[st.col];
+  const rn=mulberry32(21);
+  for(let r=0;r<6;r++){ ctx.fillStyle='#6E777E'; ctx.fillRect(x0-4,y0+(r+1)*ch-4,x1-x0+8,3);
+    for(let c=0;c<8;c++){ const i=r*8+c, u=U[i], bw=cw*0.62, bh=ch*0.72, bx=x0+c*cw+(cw-bw)/2, by=y0+r*ch+ch-bh-6; const noise=rn();
+      if(u===2){ ctx.strokeStyle='rgba(200,190,175,.35)'; ctx.setLineDash([3,3]); ctx.strokeRect(bx,by,bw,bh); ctx.setLineDash([]); continue; }
+      drawBagShape(ctx,bx,by,bw,bh,clamp(o.col/100*(0.8+noise*0.4)-0.05,0,1),{mold:u===1});
+      if(o.meyve&&B.o.cut!=null&&u===0){ ctx.strokeStyle='rgba(40,30,25,.8)'; ctx.lineWidth=1.3; for(const yy of [0.3,0.65]){ const sx=bx+bw/2, sy=by+bh*yy; ctx.beginPath(); ctx.moveTo(sx-3,sy-3); ctx.lineTo(sx+3,sy+3); ctx.moveTo(sx+3,sy-3); ctx.lineTo(sx-3,sy+3); ctx.stroke();
+          const k=Math.round((o.pins||0)/100*5); ctx.fillStyle=C[0]; for(let j=0;j<k;j++){ ctx.beginPath(); ctx.arc(sx-4+((j*7)%9),sy-2+((j*5)%5),1.6+(o.pins/100)*1.4,0,7); ctx.fill(); } } } } }
+  if(lightOn){ ctx.fillStyle='#F6EBC8'; ctx.fillRect(x0,4,x1-x0,4); ctx.fillStyle=`rgba(255,244,210,${0.04+o.light/16*0.08})`; ctx.fillRect(0,0,SW,SH); }
+  if(B.bio.pests){ ctx.fillStyle='#111'; for(let i=0;i<6+B.bio.pests*4;i++){ const x=x0+((i*83+Math.sin(t*3+i)*30+t*40)%(x1-x0)), y=20+((i*47+Math.cos(t*2.3+i)*20)%(SH-40)); ctx.fillRect(x,y,2.5,2.5);} }
+  const fx=SW*0.92, fy=SH*0.18, fr=Math.min(18,SW*0.03); ctx.save(); ctx.translate(fx,fy); ctx.rotate(t*o.vent*3); ctx.fillStyle='#B8C2C8'; for(let i=0;i<3;i++){ ctx.rotate(2.094); ctx.beginPath(); ctx.ellipse(fr*0.5,0,fr*0.5,fr*0.2,0,0,7); ctx.fill(); } ctx.restore();
+  txt(VENT[o.vent],fx,fy+fr+14,'#C9BBA8',10,'center');
+  txt(fmt(o.temp,1)+'°C',fx,SH*0.55,'#EFE6DA',12,'center'); txt('torba içi',fx,SH*0.55+13,'#C9BBA8',9,'center');
+  txt(lightOn?`ışık ${o.light} sa`:'karanlık',fx,SH*0.72,lightOn?'#F2DE85':'#9A8F84',10,'center');
+  if(o.co2){ txt(fmt(o.co2),fx,SH*0.86,'#EFE6DA',11,'center'); txt('ppm CO₂',fx,SH*0.86+12,'#C9BBA8',9,'center'); } }
+function drawOBed(t){ const h=B.h;
+  if(!BED||BED.w!==SW||BED.h!==SH||BED.sp!=='o'){ const c=document.createElement('canvas'); c.width=SW*DPR; c.height=SH*DPR; const b=c.getContext('2d'); b.scale(DPR,DPR);
+    b.fillStyle='#36302B'; b.fillRect(0,0,SW,SH); const r=mulberry32(8); for(let i=0;i<SW*SH/60;i++){ b.fillStyle=r()<.5?'rgba(20,16,12,.3)':'rgba(110,100,90,.18)'; b.fillRect(r()*SW,r()*SH,1+r()*2,1+r()*2); }
+    const L=oLayout(); const X=v=>12+v*(SW-24), Y=v=>12+v*(SH-24);
+    for(const bg of L.bags){ const w=bg.w*(SW-24), hh=bg.h*(SH-24); drawBagShape(b,X(bg.cx)-w/2,Y(bg.top)+8,w,hh-8,0.95); }
+    b.fillStyle='rgba(40,30,25,.75)'; for(const sl of L.slots){ b.beginPath(); b.ellipse(X(sl.x),Y(sl.y),4,6,0,0,7); b.fill(); }
+    BED={w:SW,h:SH,c,sp:'o'}; }
+  ctx.drawImage(BED.c,0,0,SW,SH);
+  if(h.light>0){ ctx.fillStyle=`rgba(255,244,210,${0.03+h.light/16*0.06})`; ctx.fillRect(0,0,SW,SH); }
+  if(!H){ txt(h.phase==='ready'?'Torbalar hazır. Flaşı başlatın.':h.phase==='between'?'Flaşlar arası dinlenme':'Hasat tamamlandı',SW/2,SH/2,'#EFE6DA',14,'center'); return; }
+  const col=curStrain().col;
+  const list=H.sp.filter(s=>!s.pk&&H.t>=s.born).sort((a,b)=>a.y-b.y);
+  for(const s of list){ const p=bedPos(s); drawOyster(p.x,p.y,mushR(s.s)*1.25,s,col); }
+  for(let i=H.fl.length-1;i>=0;i--){ const f=H.fl[i], a=H.t-f.t; if(a>1.2){H.fl.splice(i,1);continue;} ctx.globalAlpha=1-a/1.2; txt(f.txt,f.x,f.y-14-a*26,f.c,12,'center'); ctx.globalAlpha=1; }
+  const tleft=Math.max(0,20-H.t); txt(`${h.flush+1}. flaş`+(tleft>0?` · yeni küme çıkıyor ${Math.ceil(tleft)} sn`:''),SW-10,SH-8,'#EFE6DA',11,'right'); }
+function drawORapor(t){ bgBarn(); const h=B.h; const tot=h.kg.A+h.kg.B+h.kg.C||1; const cw=SW/3, col=curStrain().col;
+  ['A','B','C'].forEach((c,i)=>{ const cx=cw*(i+0.5), bw=Math.min(150,cw*0.78), by=SH*0.78, bh=SH*0.26;
+    const n=Math.round(h.kg[c]/tot*18); const r=mulberry32(i+60);
+    for(let j=0;j<n;j++){ const x=cx-bw/2+16+r()*(bw-32), y=by-8-r()*Math.min(bh*0.8,10+n*2.5); drawOyster(x,y,9+r()*3,{s:c==='A'?0.6:c==='B'?0.85:1},col); }
+    ctx.fillStyle='#8A5A32'; ctx.fillRect(cx-bw/2,by,bw,bh*0.55); ctx.fillStyle='#A8723F'; ctx.fillRect(cx-bw/2,by+6,bw,5); ctx.fillRect(cx-bw/2,by+bh*0.3,bw,5);
+    txt(`${c} sınıfı · ${fmt(h.kg[c])} kg`,cx,SH-10,'#EFE6DA',11,'center'); }); }
+
+/* ---------- render ---------- */
+function render(){
+  const act=document.activeElement&&document.activeElement.id;
+  const st=STAGES[B.stage]; BIND={};
+  $('#stats').innerHTML=`<div class="stat"><span>Kasa</span><b class="${G.money<0?'neg':''}">${tl(G.money)}</b></div><div class="stat"><span>Gün</span><b>${G.day}</b></div><div class="stat"><span>Parti</span><b>${G.batchNo}</b></div>${G.best!==null?`<div class="stat"><span>En iyi kâr</span><b>${tl(G.best)}</b></div>`:''}<div class="btns">${confirmReset?`<button class="danger" data-act="reset:ok">Sıfırla</button><button data-act="resetno">Vazgeç</button>`:`<button data-act="reset">Yeni oyun</button>`}</div>`;
+  const STP=isO()?STEPS_O:STEPS; const idx=STP.findIndex(s=>s.st.includes(B.stage));
+  $('#steps').innerHTML=STP.map((s,i)=>`<div class="step ${i<idx?'done':i===idx?'cur':''}" ${i===idx?'aria-current="step"':''}><span class="n">${i+1}<span class="s"> · ${s.sub}</span></span><span class="t">${s.name}</span></div>`).join('');
+  $('#info').innerHTML=`<h3>Gerçek üretimde</h3><p>${typeof st.info==='function'?st.info():st.info}</p>`;
+  $('#panel').innerHTML=st.panel();
+  const L=$('#live'); if(L&&st.live) L.innerHTML=st.live();
+  $('#sceneCap').textContent=st.cap();
+  $('#log').innerHTML=B.log.map(l=>`<li class="${l.kind}"><span>Gün ${l.d}</span>${l.msg}</li>`).join('');
+  if(act){ const el=document.getElementById(act); if(el) el.focus({preventScroll:true}); }
+}
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(!b||b.disabled) return;
+  const [a,arg]=b.dataset.act.split(':'); const fn=ACT[a]; if(!fn) return;
+  fn(arg!==undefined&&!isNaN(+arg)?+arg:arg); save(); render(); });
+document.addEventListener('input',e=>{ const el=e.target; const bd=BIND[el.id];
+  if(bd){ const v=+el.value; bd.set(v); const o=document.getElementById(el.id+'-o'); if(o) o.textContent=bd.show(v)+(bd.unit?' '+bd.unit:'');
+    const L=$('#live'), st=STAGES[B.stage]; if(L&&st.live&&B.stage!=='hasat') L.innerHTML=st.live(); save(); return; }
+  const k=el.dataset.bind; if(!k) return;
+  const v=+el.value;
+  if(k==='strain') B.ekim.strain=v; else if(k==='cas') B.ortu.type=v; else if(k==='talas') B.o.mix.type=v; else if(k==='ostrain') B.o.ekim.strain=v;
+  else if(isO()) B.o.ekim[k]=el.checked; else B.ekim[k]=el.checked;
+  save(); render(); });
+scene.addEventListener('pointerdown',e=>{ if(B.stage!=='hasat') return; const r=scene.getBoundingClientRect(); pickAt(e.clientX-r.left,e.clientY-r.top); });
+
+function boot(data){
+  G=(data&&data.G)||load()||newGame(); B=G.B; if(!B.sp) B.sp='a'; if(!G.lastSp) G.lastSp=B.sp;
+  if(B.stage==='hasat'&&B.h&&B.h.phase==='running') B.h.phase=B.h.flush===0?'ready':'between';
+  if(B.h&&B.h.phase==='between'&&!B.h.last) B.h.last={A:0,B:0,C:0,lost:0};
+  if(!B.log.length) log('Çiftliğe hoş geldiniz. Kasada 250.000 ₺ var. İlk iş: ne yetiştireceğinizi seçip substratı hazırlayın.');
+  render(); requestAnimationFrame(frame);
+}
+window.claude?.hot?.snapshot?.(()=>({G}));
+window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
+</script>
+</body>
+</html>
